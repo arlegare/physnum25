@@ -1,14 +1,15 @@
-# Ising Spin Glass Model Simulation
+# Exploration numérique du modèle d'Ising
 
-This project implements a simulation of the Ising spin glass model in three dimensions. The Ising model is a mathematical model used in statistical mechanics to understand phase transitions and magnetic properties of materials.
+Ce projet implémente une simulation du modèle d'Ising en 3 dimensions. Le modèle d'Ising est un modèle utilisé en physique statistique pour décrire les changements de phases et les propriétés magnétiques.
 
-## Overview
+## Aperçu
 
-The Ising spin glass model consists of a lattice of spins that can be in one of two states: up (+1) or down (-1). The interactions between neighboring spins and the external temperature influence the overall behavior of the system. This project provides tools to simulate and analyze the properties of the spin glass model.
+Le modèle d'Ising consiste en un treillis de noeuds dotés de spin soit « up » (+1), soit « down » (-1). Les interactions entre noeuds adjacents ainsi que la température du système influencent toutes deux le comportement global. Ce projet vise à simuler des changements de phase et à trouver les seuils critiques afférents de manière numérique, afin de les comparer aux prédictions analytiques provenant de la littérature scientifique.
+
 
 ## Installation
 
-To set up the project, clone the repository and install the required dependencies:
+Pour installer ce projet, il faut cloner le repos et insaller les dépendances.
 
 ```bash
 git clone <repository-url>
@@ -16,9 +17,9 @@ cd ising-spin-glass
 pip install -r requirements.txt
 ```
 
-## Usage
+## Utilisation
 
-To run the simulation, you can use the `IsingModel` class defined in `src/ising_model.py`. Here is a simple example:
+Pour lancer les simulations, il faut utiliser la classe `IsingModel` définie `src/ising_model.py`. En voici un exemple :
 
 ```python
 from src.ising_model import IsingModel
@@ -28,17 +29,17 @@ model.initialize_lattice()
 model.run_simulation(steps=1000)
 ```
 
-## Running Tests
+## Lancement de simulations
 
-To ensure that the implementation is correct, you can run the unit tests provided in the `tests` directory. Use the following command:
+Pour s'assurer que l'implémentation soit bien effectuée, on doit lancer les unités de test qui se trouvent dans le dossier `tests`. La commande suivante s'avère utile :
 
 ```bash
 pytest tests/test_ising_model.py
 ```
 
-## Contributing
+## Contribution
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
+N'oubliez pas de push/pull et de commenter vos contributions!
 
 ## License
 
