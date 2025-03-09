@@ -54,7 +54,8 @@ class Metropolis():
             list_lattices.append(self.lattice.copy())
             #current_lattice = self.lattice.copy()
             new_lattice = self.lattice.copy()
-            new_lattice[np.random.randint(0, self.size), np.random.randint(0, self.size)] *= -1 # Flip un spin au hasard
+            row, col = np.random.randint(0, self.size), np.random.randint(0, self.size)
+            new_lattice[row, col] *= -1 # Flip un spin au hasard
 
             DeltaE = self.microstate_energy(new_lattice) - self.microstate_energy(self.lattice)
             if DeltaE > 0 and np.random.random() < np.exp(-1/(cte.Boltzmann * self.T) * DeltaE):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
