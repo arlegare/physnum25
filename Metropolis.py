@@ -44,6 +44,19 @@ class Metropolis():
         energy_array = -lattice * self.J * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
         return tot_energy + energy_array.sum()
     
-    
+    def find_equilibrium(self):
+        # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
+        # Créer une copie de lattice en premier
+        for _ in range(self.n_iter):
+            #current_lattice = self.lattice.copy()
+            new_lattice = self.lattice.copy()
+            new_lattice[np.random.randint(0, self.size), np.random.randint(0, self.size)] *= -1 # Flip un spin au hasard
+
+            DeltaE = self.microstate_energy(new_lattice) - self.microstate_energy(self.lattice)
+            if DeltaE > 0 and np.random.random() < np.exp(-1/(cte.Boltzmann * self.T) * DeltaE):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
+                self.lattice = new_lattice
+            elif DeltaE < 0:
+                self.lattice = new_lattice  # Si l'énergie est plus petite on flip (100% de chance)
+        return # On pourrait peut-être return des paramètres de la lattice finale genre magnétisation, spin moyen, énergie moyenne, etc. sinon faire une autre fonction I guess
 
 
