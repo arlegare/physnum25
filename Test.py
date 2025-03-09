@@ -12,3 +12,5 @@ def visualize_snapshots(snapshots):   # J'ai steal ça de copilot pour visualise
         plt.title(f"Step {idx * 10}")  # Adjust interval as needed
     plt.tight_layout()
     plt.show()
+
+#visualize_snapshots(lattices)

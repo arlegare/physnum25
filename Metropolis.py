@@ -38,20 +38,20 @@ class Metropolis():
         # On commence par celle du champ
         for i in range(self.size):
             for j in range(self.size):
-                tot_energy -= self.B * cte.physical_constants["Bohr magneton"] * lattice[i][j]
+                tot_energy -= self.B * cte.physical_constants["Bohr magneton"][0] * lattice[i][j]
         # Funky business pour faire le terme de corrélations
         mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
         mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
         energy_array = -lattice * self.J * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
         return tot_energy + energy_array.sum()
     
-    @num.njit(nopython=True, nogil=True)
+    #@num.njit(nopython=True, nogil=True)
     def find_equilibrium(self):
         # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
         # Créer une copie de lattice en premier
-        list_lattices = np.zeros(self.n_iter) # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba 
-        for i in range(self.n_iter):
-            list_lattices[i] = self.lattice
+        list_lattices = [] # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba 
+        for _ in range(self.n_iter):
+            list_lattices.append(self.lattice.copy())
             #current_lattice = self.lattice.copy()
             new_lattice = self.lattice.copy()
             new_lattice[np.random.randint(0, self.size), np.random.randint(0, self.size)] *= -1 # Flip un spin au hasard
