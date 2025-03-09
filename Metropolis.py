@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numba as num
 import scipy.ndimage as sc
 import scipy.constants as cte
+from matplotlib.animation import FuncAnimation
 
 class Metropolis():
     # Changer pour mettre les commentaires format PEP-8
@@ -21,7 +22,7 @@ class Metropolis():
         #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
         #  Peut-être donner un argument dans innit pour choisir? Sinon on peut juste mettre par défaut une certaine valeur genre 50/50
         #  Je mets 50/50 for now
-        lattice = np.zeros(self.size, self.size)
+        lattice = np.zeros((self.size, self.size))
         for i in range(self.size):
             for j in range(self.size):
                 if np.random.random() > 0.5:
@@ -48,7 +49,9 @@ class Metropolis():
     def find_equilibrium(self):
         # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
         # Créer une copie de lattice en premier
-        for _ in range(self.n_iter):
+        list_lattices = np.zeros(self.n_iter) # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba 
+        for i in range(self.n_iter):
+            list_lattices[i] = self.lattice
             #current_lattice = self.lattice.copy()
             new_lattice = self.lattice.copy()
             new_lattice[np.random.randint(0, self.size), np.random.randint(0, self.size)] *= -1 # Flip un spin au hasard
@@ -58,6 +61,6 @@ class Metropolis():
                 self.lattice = new_lattice
             elif DeltaE < 0:
                 self.lattice = new_lattice  # Si l'énergie est plus petite on flip (100% de chance)
-        return # On pourrait peut-être return des paramètres de la lattice finale genre magnétisation, spin moyen, énergie moyenne, etc. sinon faire une autre fonction I guess
+        return list_lattices  # On pourrait peut-être return des paramètres de la lattice finale genre magnétisation, spin moyen, énergie moyenne, etc. sinon faire une autre fonction I guess
 
 
