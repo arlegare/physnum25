@@ -44,6 +44,7 @@ class Metropolis():
         energy_array = -lattice * self.J * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
         return tot_energy + energy_array.sum()
     
+    @num.njit(nopython=True, nogil=True)
     def find_equilibrium(self):
         # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
         # Créer une copie de lattice en premier
