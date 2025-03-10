@@ -10,13 +10,12 @@ boltzmann = cte.Boltzmann
 
 
 
-def initialize_lattice(size):
+def initialize_lattice(size, pourcentage_up=0.5):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
-    #  Peut-être donner un argument dans innit pour choisir? Sinon on peut juste mettre par défaut une certaine valeur genre 50/50
-    lattice = np.zeros((size, size), dtype=np.float64)
+    lattice = np.zeros((size, size))
     for i in range(size):
         for j in range(size):
-            if np.random.random() > 0.75:
+            if np.random.random() > pourcentage_up:
                 lattice[i][j] = 1
             else:
                 lattice[i][j] = -1
@@ -39,15 +38,14 @@ def microstate_energy(lattice, B, J):
 def find_equilibrium(T, B, J, lattice, n_iter, energy):
     # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
     # Créer une copie de lattice en premier
-    list_lattices = [] # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba
-    spin_mean_list = []
-    energy_list = []
+    list_lattices = [lattice.copy()] # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba
+    spin_mean_list = [np.mean(lattice)]
+    energy_list = [energy]
     for _ in range(n_iter):
-        list_lattices.append(lattice.copy())
         new_lattice = lattice.copy()
         row, col = np.random.randint(0, len(lattice[0])), np.random.randint(0, len(lattice[0]))
-        new_lattice[row, col] *= -1 # Flip un spin au hasard
-        E_i = B * magneton * lattice[row][col]
+        new_lattice[row][col] *= -1 # Flip un spin au hasard
+        E_i = B * magneton * lattice[row][col] # Terme dû au champ magnétique
         E_f = B * magneton * new_lattice[row][col]
         if row == 0:
             E_i -= J * lattice[row][col] *(lattice[row+1][col] + lattice[-1][col])
@@ -65,35 +63,36 @@ def find_equilibrium(T, B, J, lattice, n_iter, energy):
             E_i -= J * lattice[row][col] * (lattice[row][col-1] + lattice[row][0])
             E_f -= J * new_lattice[row][col] * (new_lattice[row][col-1] + new_lattice[row][0])
 
-        if row != 0 and row != (len(lattice)-1) and col != 0 and col != (len(lattice)-1):   # Je sais pas pourquoi mais si je met juste un else ya un index error
+        if row != 0 and row != (len(lattice)-1) and col != 0 and col != (len(lattice)-1):  # Si on est pas sur les bords
             E_i -= J * lattice[row][col] * (lattice[row][col+1] + lattice[row][col-1] + lattice[row+1][col] + lattice[row-1][col])
             E_f -= J * new_lattice[row][col] * (new_lattice[row][col+1] + new_lattice[row][col-1] + new_lattice[row+1][col] + new_lattice[row-1][col])
 
         DeltaE = E_f - E_i
-        if DeltaE > 0 and np.random.random() < np.exp(-1/(boltzmann * T) * DeltaE):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
+        if DeltaE > 0 and np.random.random() < np.exp(-DeltaE/(boltzmann * T)):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
             lattice = new_lattice
             energy += DeltaE
-        elif DeltaE < 0:
+        elif DeltaE <= 0:
             lattice = new_lattice  # Si l'énergie est plus petite on flip (100% de chance)
             energy += DeltaE
         spin_mean_list.append(np.mean(lattice))
         energy_list.append(energy)
+        list_lattices.append(lattice)
     return list_lattices, energy, spin_mean_list, energy_list
 
 
 initial_lattice = initialize_lattice(100)
-energy = microstate_energy(initial_lattice, 1, 1)
-lattices, energy, spin_means, energy_list = find_equilibrium(1, 0, 1, initial_lattice, 100000, energy) 
-time_array = np.arange(0, len(spin_means), 1)
+energy = microstate_energy(initial_lattice, 0, 1)
+lattices, energy, spin_means, energy_list = find_equilibrium(0.1, 0, 1, initial_lattice, 100000, energy) 
+step_algo = np.arange(0, len(spin_means), 1)
 
 plt.figure(1)
-plt.plot(time_array, spin_means)
-plt.xlabel("Time")
+plt.plot(step_algo, spin_means)
+plt.xlabel("Step")
 plt.ylabel("Spin Mean")
 
 plt.figure(2)
-plt.plot(time_array, energy_list)
-plt.xlabel("Time")
+plt.plot(step_algo, energy_list)
+plt.xlabel("Step")
 plt.ylabel("Energy")
 
 def animate_lattice(lattices, interval=1):
