@@ -5,7 +5,6 @@ import scipy.ndimage as sc
 import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
-boltzmann = cte.Boltzmann
 
 def initialize_lattice(size, pourcentage_up=0.70):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
@@ -24,7 +23,7 @@ def microstate_energy(lattice, h, J):
     # On commence par celle du champ
     for i in range(len(lattice[0])):
         for j in range(len(lattice[0])):
-            tot_energy -= h * lattice[i, j]
+            tot_energy -= h * lattice[i, j] # Signe - car si spin est dans la même direction que le champ, l'énergie est minimisée
     # Funky business pour faire le terme de corrélations
     mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
     mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
@@ -57,7 +56,6 @@ def find_equilibrium(T, h, J, lattice, n_iter, energy):
         energy_list.append(energy)
         list_lattices.append(lattice)
     return list_lattices, energy, spin_mean_list, energy_list
-
 
 initial_lattice = initialize_lattice(100)
 energy = microstate_energy(initial_lattice, 0, 1)
