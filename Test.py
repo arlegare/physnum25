@@ -5,12 +5,12 @@ import scipy.ndimage as sc
 import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
-magneton = cte.physical_constants["Bohr magneton"][0]
+
 boltzmann = cte.Boltzmann
 
 
 
-def initialize_lattice(size, pourcentage_up=0.5):
+def initialize_lattice(size, pourcentage_up=0.50):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
     lattice = np.zeros((size, size))
     for i in range(size):
@@ -21,13 +21,13 @@ def initialize_lattice(size, pourcentage_up=0.5):
                 lattice[i][j] = -1
     return lattice
 
-def microstate_energy(lattice, B, J):
+def microstate_energy(lattice, h, J):
     #  Faut additionner la somme des voisins les plus proches et prendre en compte la contribution du champ mag
     tot_energy = 0
     # On commence par celle du champ
     for i in range(len(lattice[0])):
         for j in range(len(lattice[0])):
-            tot_energy -= B * cte.physical_constants["Bohr magneton"][0] * lattice[i][j]
+            tot_energy -= h * lattice[i][j]
     # Funky business pour faire le terme de corrélations
     mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
     mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
@@ -35,7 +35,7 @@ def microstate_energy(lattice, B, J):
     return tot_energy + energy_array.sum()
 
 @num.njit(nogil=True)
-def find_equilibrium(T, B, J, lattice, n_iter, energy):
+def find_equilibrium(T, h, J, lattice, n_iter, energy):
     # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
     # Créer une copie de lattice en premier
     list_lattices = [lattice.copy()] # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba
@@ -45,27 +45,9 @@ def find_equilibrium(T, B, J, lattice, n_iter, energy):
         new_lattice = lattice.copy()
         row, col = np.random.randint(0, len(lattice[0])), np.random.randint(0, len(lattice[0]))
         new_lattice[row][col] *= -1 # Flip un spin au hasard
-        E_i = B * magneton * lattice[row][col] # Terme dû au champ magnétique
-        E_f = B * magneton * new_lattice[row][col]
-        if row == 0:
-            E_i -= J * lattice[row][col] *(lattice[row+1][col] + lattice[-1][col])
-            E_f -= J * new_lattice[row][col] *(new_lattice[row+1][col] + new_lattice[-1][col])
-
-        if row == (len(lattice)-1):
-            E_i -= J * lattice[row][col] * (lattice[row-1][col] + lattice[0][col])
-            E_f -= J * new_lattice[row][col] * (new_lattice[row-1][col] + new_lattice[0][col])
-
-        if col == 0:
-            E_i -= J * lattice[row][col] * (lattice[row][col+1] + lattice[row][-1])
-            E_f -= J * new_lattice[row][col] * (new_lattice[row][col+1] + new_lattice[row][-1])
-
-        if col == (len(lattice)-1):
-            E_i -= J * lattice[row][col] * (lattice[row][col-1] + lattice[row][0])
-            E_f -= J * new_lattice[row][col] * (new_lattice[row][col-1] + new_lattice[row][0])
-
-        if row != 0 and row != (len(lattice)-1) and col != 0 and col != (len(lattice)-1):  # Si on est pas sur les bords
-            E_i -= J * lattice[row][col] * (lattice[row][col+1] + lattice[row][col-1] + lattice[row+1][col] + lattice[row-1][col])
-            E_f -= J * new_lattice[row][col] * (new_lattice[row][col+1] + new_lattice[row][col-1] + new_lattice[row+1][col] + new_lattice[row-1][col])
+        # Terme dû au champ + terme de corrélation avec conditions frontières périodiques
+        E_i = -h * lattice[row][col] - J * lattice[row, col] * (lattice[(row+1) % len(lattice), col] + lattice[(row-1) % len(lattice), col] + lattice[row, (col+1) % len(lattice)] + lattice[row, (col-1) % len(lattice)])
+        E_f = -h * new_lattice[row][col] -J * new_lattice[row, col] * (new_lattice[(row+1) % len(lattice), col] + new_lattice[(row-1) % len(lattice), col] + new_lattice[row, (col+1) % len(lattice)] + new_lattice[row, (col-1) % len(lattice)])
 
         DeltaE = E_f - E_i
         if DeltaE > 0 and np.random.random() < np.exp(-DeltaE/(boltzmann * T)):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
@@ -82,7 +64,7 @@ def find_equilibrium(T, B, J, lattice, n_iter, energy):
 
 initial_lattice = initialize_lattice(100)
 energy = microstate_energy(initial_lattice, 0, 1)
-lattices, energy, spin_means, energy_list = find_equilibrium(0.1, 0, 1, initial_lattice, 100000, energy) 
+lattices, energy, spin_means, energy_list = find_equilibrium(1.5, 0, 1, initial_lattice, 1000000, energy) 
 step_algo = np.arange(0, len(spin_means), 1)
 
 plt.figure(1)
