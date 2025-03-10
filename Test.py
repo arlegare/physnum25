@@ -5,20 +5,17 @@ import scipy.ndimage as sc
 import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
-
 boltzmann = cte.Boltzmann
 
-
-
-def initialize_lattice(size, pourcentage_up=0.50):
+def initialize_lattice(size, pourcentage_up=0.70):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
     lattice = np.zeros((size, size))
     for i in range(size):
         for j in range(size):
             if np.random.random() > pourcentage_up:
-                lattice[i][j] = 1
+                lattice[i, j] = 1
             else:
-                lattice[i][j] = -1
+                lattice[i, j] = -1
     return lattice
 
 def microstate_energy(lattice, h, J):
@@ -27,7 +24,7 @@ def microstate_energy(lattice, h, J):
     # On commence par celle du champ
     for i in range(len(lattice[0])):
         for j in range(len(lattice[0])):
-            tot_energy -= h * lattice[i][j]
+            tot_energy -= h * lattice[i, j]
     # Funky business pour faire le terme de corrélations
     mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
     mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
@@ -46,11 +43,11 @@ def find_equilibrium(T, h, J, lattice, n_iter, energy):
         row, col = np.random.randint(0, len(lattice[0])), np.random.randint(0, len(lattice[0]))
         new_lattice[row][col] *= -1 # Flip un spin au hasard
         # Terme dû au champ + terme de corrélation avec conditions frontières périodiques
-        E_i = -h * lattice[row][col] - J * lattice[row, col] * (lattice[(row+1) % len(lattice), col] + lattice[(row-1) % len(lattice), col] + lattice[row, (col+1) % len(lattice)] + lattice[row, (col-1) % len(lattice)])
-        E_f = -h * new_lattice[row][col] -J * new_lattice[row, col] * (new_lattice[(row+1) % len(lattice), col] + new_lattice[(row-1) % len(lattice), col] + new_lattice[row, (col+1) % len(lattice)] + new_lattice[row, (col-1) % len(lattice)])
+        E_i = -h * lattice[row, col] - J * lattice[row, col] * (lattice[(row+1) % len(lattice), col] + lattice[(row-1) % len(lattice), col] + lattice[row, (col+1) % len(lattice)] + lattice[row, (col-1) % len(lattice)])
+        E_f = -h * new_lattice[row, col] -J * new_lattice[row, col] * (new_lattice[(row+1) % len(lattice), col] + new_lattice[(row-1) % len(lattice), col] + new_lattice[row, (col+1) % len(lattice)] + new_lattice[row, (col-1) % len(lattice)])
 
         DeltaE = E_f - E_i
-        if DeltaE > 0 and np.random.random() < np.exp(-DeltaE/(boltzmann * T)):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
+        if DeltaE > 0 and np.random.random() < np.exp(-DeltaE/T):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
             lattice = new_lattice
             energy += DeltaE
         elif DeltaE <= 0:
@@ -64,7 +61,7 @@ def find_equilibrium(T, h, J, lattice, n_iter, energy):
 
 initial_lattice = initialize_lattice(100)
 energy = microstate_energy(initial_lattice, 0, 1)
-lattices, energy, spin_means, energy_list = find_equilibrium(1.5, 0, 1, initial_lattice, 1000000, energy) 
+lattices, energy, spin_means, energy_list = find_equilibrium(6, 0, 1, initial_lattice, 100000, energy) 
 step_algo = np.arange(0, len(spin_means), 1)
 
 plt.figure(1)
@@ -76,6 +73,20 @@ plt.figure(2)
 plt.plot(step_algo, energy_list)
 plt.xlabel("Step")
 plt.ylabel("Energy")
+
+plt.figure(3)
+plt.imshow(lattices[-1], vmin=-1, vmax=1)
+plt.title("Final Lattice")
+plt.xticks([])
+plt.yticks([])
+#plt.show()
+
+plt.figure(4)
+plt.imshow(lattices[0], vmin=-1, vmax=1)
+plt.title("Initial Lattice")
+plt.xticks([])
+plt.yticks([])
+plt.show()
 
 def animate_lattice(lattices, interval=1):
     fig, ax = plt.subplots()
@@ -96,4 +107,3 @@ def animate_lattice(lattices, interval=1):
     plt.show()
 
 #animate_lattice(lattices)
-plt.show()
