@@ -5,19 +5,18 @@ import scipy.ndimage as sc
 import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
-
 def initialize_lattice(size, pourcentage_up=0.70):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
     lattice = np.zeros((size, size))
     for i in range(size):
         for j in range(size):
-            if np.random.random() > pourcentage_up:
+            if np.random.random() < pourcentage_up:
                 lattice[i, j] = 1
             else:
                 lattice[i, j] = -1
     return lattice
 
-def microstate_energy(lattice, h, J):
+def microstate_energy(lattice, h):
     #  Faut additionner la somme des voisins les plus proches et prendre en compte la contribution du champ mag
     tot_energy = 0
     # On commence par celle du champ
@@ -27,11 +26,12 @@ def microstate_energy(lattice, h, J):
     # Funky business pour faire le terme de corrélations
     mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
     mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
-    energy_array = -lattice * J * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
+    energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
     return tot_energy + energy_array.sum()
 
 @num.njit(nogil=True)
-def find_equilibrium(T, h, J, lattice, n_iter, energy):
+def find_equilibrium(betaJ, h,  lattice, n_iter, energy):
+    # BetaJ vu q'on a normalisé. Revient à diviser par J dans la formule de l'énergie
     # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
     # Créer une copie de lattice en premier
     list_lattices = [lattice.copy()] # Probably une meilleure façon de le faire mais je met une liste de lattices pour faire l'animation plus tard. On peut pas mettre des trucs de matplotlib dans une foncion s'il y a numba
@@ -42,11 +42,12 @@ def find_equilibrium(T, h, J, lattice, n_iter, energy):
         row, col = np.random.randint(0, len(lattice[0])), np.random.randint(0, len(lattice[0]))
         new_lattice[row][col] *= -1 # Flip un spin au hasard
         # Terme dû au champ + terme de corrélation avec conditions frontières périodiques
-        E_i = -h * lattice[row, col] - J * lattice[row, col] * (lattice[(row+1) % len(lattice), col] + lattice[(row-1) % len(lattice), col] + lattice[row, (col+1) % len(lattice)] + lattice[row, (col-1) % len(lattice)])
-        E_f = -h * new_lattice[row, col] -J * new_lattice[row, col] * (new_lattice[(row+1) % len(lattice), col] + new_lattice[(row-1) % len(lattice), col] + new_lattice[row, (col+1) % len(lattice)] + new_lattice[row, (col-1) % len(lattice)])
+        # On calcul seulement l'énergie du spin concerné puisque les autres ne changent pas
+        E_i = -h * lattice[row, col] -  lattice[row, col] * (lattice[(row+1) % len(lattice), col] + lattice[(row-1) % len(lattice), col] + lattice[row, (col+1) % len(lattice)] + lattice[row, (col-1) % len(lattice)])
+        E_f = -h * new_lattice[row, col] - new_lattice[row, col] * (new_lattice[(row+1) % len(lattice), col] + new_lattice[(row-1) % len(lattice), col] + new_lattice[row, (col+1) % len(lattice)] + new_lattice[row, (col-1) % len(lattice)])
 
         DeltaE = E_f - E_i
-        if DeltaE > 0 and np.random.random() < np.exp(-DeltaE/T):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
+        if DeltaE > 0 and np.random.random() < np.exp(-betaJ*DeltaE):  # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
             lattice = new_lattice
             energy += DeltaE
         elif DeltaE <= 0:
@@ -58,8 +59,8 @@ def find_equilibrium(T, h, J, lattice, n_iter, energy):
     return list_lattices, energy, spin_mean_list, energy_list
 
 initial_lattice = initialize_lattice(100)
-energy = microstate_energy(initial_lattice, 0, 1)
-lattices, energy, spin_means, energy_list = find_equilibrium(6, 0, 1, initial_lattice, 100000, energy) 
+energy = microstate_energy(initial_lattice, 0)
+lattices, energy, spin_means, energy_list = find_equilibrium(0.7, 0, initial_lattice, 100000, energy) 
 step_algo = np.arange(0, len(spin_means), 1)
 
 plt.figure(1)
@@ -70,14 +71,13 @@ plt.ylabel("Spin Mean")
 plt.figure(2)
 plt.plot(step_algo, energy_list)
 plt.xlabel("Step")
-plt.ylabel("Energy")
+plt.ylabel("E/J")
 
 plt.figure(3)
 plt.imshow(lattices[-1], vmin=-1, vmax=1)
 plt.title("Final Lattice")
 plt.xticks([])
 plt.yticks([])
-#plt.show()
 
 plt.figure(4)
 plt.imshow(lattices[0], vmin=-1, vmax=1)
