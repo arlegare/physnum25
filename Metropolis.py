@@ -5,6 +5,8 @@ import scipy.ndimage as sc
 import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
+# Va falloir trouver une manière de faire fonctionner Numba avec des classes.
+
 class Metropolis():
     # Changer pour mettre les commentaires format PEP-8
     def __init__(self, n_iter, lattice_size, magnetic_field, temperature, J, previous_lattice = None):

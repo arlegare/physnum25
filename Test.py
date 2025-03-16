@@ -49,7 +49,7 @@ def microstate_energy(lattice, h):
     mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1).
     mask[1,1] = False  # Le spin est lui-même exclu de la somme.
 
-    # On applique les conditions frontières périodiques avec l'argument wrap. 
+    # On applique les conditions frontières "Pac-Man" avec l'argument wrap. 
     # La convolution revient à faire la somme sur les s_j, où j correspond aux plus proches voisins (du mask).
     energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
 
