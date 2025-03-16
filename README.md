@@ -9,34 +9,15 @@ Le modèle d'Ising consiste en un treillis de noeuds dotés de spin soit « up �
 
 ## Installation
 
-Pour installer ce projet, il faut cloner le repos et insaller les dépendances.
+Pour installer ce projet, il faut cloner le repos, créer un environnement virtuel puis insaller les librairies nécessairement au bon fonctionnement.
 
 ```bash
 git clone <repository-url>
-cd ising-spin-glass
+cd "dossier global du projet"
+python -m venv venv
+source ../venv/bin/activate
+cd physnum25
 pip install -r requirements.txt
 ```
 
-## Utilisation
-
-Pour lancer les simulations, il faut utiliser la classe `IsingModel` définie `src/ising_model.py`. En voici un exemple :
-
-```python
-from src.ising_model import IsingModel
-
-model = IsingModel(size=10, temperature=1.0)
-model.initialize_lattice()
-model.run_simulation(steps=1000)
-```
-
-## Lancement de simulations
-
-Pour s'assurer que l'implémentation soit bien effectuée, on doit lancer les unités de test qui se trouvent dans le dossier `tests`. La commande suivante s'avère utile :
-
-```bash
-pytest tests/test_ising_model.py
-```
-
-## Contribution
-
-N'oubliez pas de push/pull et de commenter vos contributions!
+Si vous êtes sur VScode, il faut ensuite cliquer manuellement sur "Python: Select Interpreter".

@@ -6,27 +6,53 @@ import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 
 def initialize_lattice(size, pourcentage_up=0.70):
-    #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
-    lattice = np.zeros((size, size))
-    for i in range(size):
-        for j in range(size):
-            if np.random.random() < pourcentage_up:
-                lattice[i, j] = 1
-            else:
-                lattice[i, j] = -1
+    """
+    Initialise une grille avec un certain pourcentage de spins orienté up ou down.
+    """
+    # L'intervalle de densité uniforme de probabilité commence à -(1-pourcentage_up).
+    uniform_interv_start = -1 * (1 - pourcentage_up) 
+
+    # L'intervalle finit à pourcentage_up.
+    uniform_interv_stop = pourcentage_up 
+
+    # On retient le signe des nombres distribués aléatoirement dans l'intervalle.
+    lattice = np.sign(np.random.uniform(uniform_interv_start, uniform_interv_stop, (size, size)))
+
     return lattice
 
+    # Ancien code : 
+    #for i in range(size):
+    #    for j in range(size):
+    #        if np.random.random() < pourcentage_up:
+    #            lattice[i, j] = 1
+    #        else:
+    #            lattice[i, j] = -1
+    #return lattice
+
 def microstate_energy(lattice, h):
-    #  Faut additionner la somme des voisins les plus proches et prendre en compte la contribution du champ mag
-    tot_energy = 0
-    # On commence par celle du champ
+    """
+    Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins, h : composante Z du champ magnétique).
+
+    On doit tenir compte de deux contributions : 
+        1) les voisins immédiats;
+        2) le champ magnétique externe.
+    """
+
+    tot_energy = 0 # Énergie totale nulle!
+
+    # On commence par la contribution du champ magnétique externe.
     for i in range(len(lattice[0])):
         for j in range(len(lattice[0])):
-            tot_energy -= h * lattice[i, j] # Signe - car si spin est dans la même direction que le champ, l'énergie est minimisée
-    # Funky business pour faire le terme de corrélations
-    mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
-    mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
-    energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
+            tot_energy -= h * lattice[i, j] # Signe - car si spin est dans la même direction que le champ, l'énergie est minimisée.
+
+    # Ceci est une « funky business » qui encapsule le terme des corrélations.
+    mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1).
+    mask[1,1] = False  # Le spin est lui-même exclu de la somme.
+
+    # On applique les conditions frontières périodiques avec l'argument wrap. 
+    # La convolution revient à faire la somme sur les s_j, où j correspond aux plus proches voisins (du mask).
+    energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
+
     return tot_energy + energy_array.sum()
 
 @num.njit(nogil=True)
@@ -74,13 +100,13 @@ plt.xlabel("Step")
 plt.ylabel("E/J")
 
 plt.figure(3)
-plt.imshow(lattices[-1], vmin=-1, vmax=1)
+plt.imshow(lattices[-1], vmin=-1, vmax=1, cmap="seismic")
 plt.title("Final Lattice")
 plt.xticks([])
 plt.yticks([])
 
 plt.figure(4)
-plt.imshow(lattices[0], vmin=-1, vmax=1)
+plt.imshow(lattices[0], vmin=-1, vmax=1, cmap="seismic")
 plt.title("Initial Lattice")
 plt.xticks([])
 plt.yticks([])
@@ -96,7 +122,7 @@ def animate_lattice(lattices, interval=1):
     def update(frame):
         ax.clear()
         ax.set_title("Lattice Animation")
-        ax.imshow(lattices[frame], vmin=-1, vmax=1)
+        ax.imshow(lattices[frame], vmin=-1, vmax=1, cmap="seismic")
         ax.set_xticks([])
         ax.set_yticks([])
 
