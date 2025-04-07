@@ -10,7 +10,7 @@
 
 # Exploration numérique du modèle d'Ising
 
-Ce projet implémente une simulation du modèle d'Ising en 3 dimensions. Le modèle d'Ising est un modèle utilisé en physique statistique pour décrire les changements de phases et les propriétés magnétiques.
+Ce projet implémente une simulation du modèle d'Ising en 2 dimensions. Le modèle d'Ising est un modèle utilisé en physique statistique pour décrire les changements de phases et certaines propriétés magnétiques, telles que le ferromagnétisme, le paramagnétisme et l'hystérisis.
 
 ## Aperçu
 
