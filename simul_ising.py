@@ -8,7 +8,7 @@ import os
 import sys
 
 @nb.njit(nopython=True)
-def microstate_energy(lattice, h, J, size):
+def microstate_energy(lattice, h, betaJ, size):
 
     """
     Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins; h : composante Z du champ magnétique).
@@ -16,7 +16,7 @@ def microstate_energy(lattice, h, J, size):
     Args:
         lattice (np.ndarray): Configuration de spins.
         h (float): Composante Z du champ magnétique.
-        J (float): Constante de couplage.
+        betaJ (float): Constante de couplage.
         size (int): Taille de la grille.
 
     Returns:
@@ -36,7 +36,7 @@ def microstate_energy(lattice, h, J, size):
                 lattice[i, (j - 1) % size]    # Voisin de gauche
             )
             # Contribution de l'énergie du spin
-            energie_totale -= J *  spin * voisinage  # Interaction avec les voisins
+            energie_totale -= betaJ *  spin * voisinage  # Interaction avec les voisins
 
             # Contribution de l'énergie du champ magnétique
             energie_totale -= h * spin  # Signe (-) car si spin est dans la même direction que le champ, l'énergie est minimisée.
@@ -76,7 +76,7 @@ def convolution_2d_periodic(lattice, kernel):
         return result
 
 @nb.njit(nopython=True)
-def interaction_energy(lattice, row, col, h, J, size):
+def interaction_energy(lattice, row, col, h, betaJ, size):
     """
     Calcule l'énergie d'interaction pour un spin donné.
 
@@ -101,10 +101,10 @@ def interaction_energy(lattice, row, col, h, J, size):
         lattice[row, (col - 1) % size]
     )
     # Énergie due au champ magnétique et aux interactions avec les voisins
-    return -h * spin - J * spin * voisinage
+    return -h * spin - betaJ * spin * voisinage
 
 @nb.njit(nopython=True)
-def find_equilibrium(lattice, n_iter, betaJ, h, J, size):
+def find_equilibrium(lattice, n_iter, betaJ, h, size):
     """
     Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis.
 
@@ -115,7 +115,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, J, size):
     Returns:
         tuple: Liste des grilles, énergie finale, liste des moyennes des spins, liste des énergies.
     """
-    energy = microstate_energy(lattice, h, J, size) # Énergie initiale du système
+    energy = microstate_energy(lattice, h, betaJ, size) # Énergie initiale du système
     spin_mean_list = [np.mean(lattice)]
     energy_list = [energy]
 
@@ -131,8 +131,8 @@ def find_equilibrium(lattice, n_iter, betaJ, h, J, size):
         
         # Terme dû au champ + terme de corrélation avec conditions frontières périodiques.
         # On calcule seulement l'énergie du spin concerné puisque les autres ne changent pas.
-        E_i = interaction_energy(lattice, row, col, h, J, size) # Avant le flip.
-        E_f = interaction_energy(new_lattice, row, col, h, J, size) # Après le flip.
+        E_i = interaction_energy(lattice, row, col, h, betaJ, size) # Avant le flip.
+        E_f = interaction_energy(new_lattice, row, col, h, betaJ, size) # Après le flip.
 
         DeltaE = E_f - E_i  # Variation d'énergie
 
@@ -201,7 +201,7 @@ class Metropolis():
         Returns:
             tuple: Liste des grilles, liste des moyennes des spins, liste des énergies.
         """
-        return find_equilibrium(self.lattice, self.n_iter, betaJ, self.B, self.J, self.size)
+        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.B, self.size)
 
 
 
