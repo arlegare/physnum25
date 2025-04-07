@@ -29,6 +29,14 @@ def initialize_lattice(size, pourcentage_up=0.70):
     #            lattice[i, j] = -1
     #return lattice
 
+def wrap_2d(lattice): 
+    """
+    Applique les CF périodiques (Pac-Man) à la grille de spins.
+    """
+    lattice = np.concatenate((lattice, lattice), axis=0)  # On double la grille en haut et en bas
+    lattice = np.concatenate((lattice, lattice), axis=1)  # On double la grille à gauche et à droite
+    return lattice
+
 def microstate_energy(lattice, h):
     """
     Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins, h : composante Z du champ magnétique).
@@ -51,7 +59,8 @@ def microstate_energy(lattice, h):
 
     # On applique les conditions frontières "Pac-Man" avec l'argument wrap. 
     # La convolution revient à faire la somme sur les s_j, où j correspond aux plus proches voisins (du mask).
-    energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
+    energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')
+
 
     return tot_energy + energy_array.sum()
 
