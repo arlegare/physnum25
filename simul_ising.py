@@ -16,7 +16,7 @@ def microstate_energy(lattice, h, betaJ, size):
     Args:
         lattice (np.ndarray): Configuration de spins.
         h (float): Composante Z du champ magnétique.
-        betaJ (float): Constante de couplage.
+        betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
         size (int): Taille de la grille.
 
     Returns:
@@ -85,7 +85,7 @@ def interaction_energy(lattice, row, col, h, betaJ, size):
         row (int): Indice de la ligne du spin.
         col (int): Indice de la colonne du spin.
         h (float): Champ magnétique externe.
-        J (float): Constante de couplage.
+        betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
         size (int): Taille de la grille.
 
     Renvoie :
@@ -118,6 +118,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size):
     energy = microstate_energy(lattice, h, betaJ, size) # Énergie initiale du système
     spin_mean_list = [np.mean(lattice)]
     energy_list = [energy]
+    lattice_list = [lattice.copy()]
 
     for _ in range(n_iter):
         row = np.random.randint(0, size)
@@ -148,11 +149,11 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size):
 
         spin_mean_list.append(np.mean(lattice))
         energy_list.append(energy)
-
-    return lattice, spin_mean_list, energy_list
+        lattice_list.append(lattice.copy())
+    return lattice_list, spin_mean_list, energy_list
 
 class Metropolis():
-    def __init__(self, n_iter, lattice_size, magnetic_field, temperature, J, previous_lattice = None, pourcentage_up=0.80):
+    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -160,17 +161,14 @@ class Metropolis():
             n_iter (int): Nombre d'itérations pour la simulation.
             lattice_size (int): Taille de la grille de spins.
             magnetic_field (float): Champ magnétique externe.
-            temperature (float): Température du système.
-            J (float): Constante de couplage (positive pour ferromagnétisme, négative pour antiferromagnétisme).
+            betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
             previous_lattice (np.ndarray, optional): Grille de spins initiale. Si None, une grille sera générée.
         """
     
         self.n_iter = n_iter  # Nb d'itérations/steps pour la simulation. Par ex. choisir assez long pour atteindre l'équilibre pour une valeur de (T,B).
         self.size = lattice_size  # Dimension de la grille (carrée) de spins. 
-        self.B = magnetic_field  # Champ magnétique externe.
-        self.T = temperature # Température du système. On peut l'utiliser pour calculer betaJ.
-        self.J = J  # Constante de couplage. >0 pour ferromagnétisme et <0 pour antiferromagnétisme.
-        self.betaJ = J / (cte.physical_constants["Boltzmann constant"][0] * temperature)
+        self.h = magnetic_field  # Champ magnétique externe.
+        self.betaJ = betaJ
         self.up_perc = pourcentage_up  # Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1)
 
         if previous_lattice is not None:
@@ -191,17 +189,15 @@ class Metropolis():
         return np.where(init_lattice < self.up_perc, 1, -1).astype("int8")
     
    
-    def run(self, betaJ):
+    def run(self):
         """
         Exécute l'algorithme de Metropolis.
-
-        Args:
-            betaJ (float): Valeur de beta * J (normalisée).
 
         Returns:
             tuple: Liste des grilles, liste des moyennes des spins, liste des énergies.
         """
-        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.B, self.size)
+
+        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size)
 
 
 
@@ -212,10 +208,10 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=100000, lattice_size=100, magnetic_field=0, temperature=1.0, J=1.0)
+metropolis = Metropolis(n_iter=30000, lattice_size=100, magnetic_field=0, betaJ=0.2, pourcentage_up=0.8)
 
 # Trouver l'état d'équilibre en utilisant la méthode `run`
-lattice, spin_means, energy_list = metropolis.run(betaJ=0.7)
+lattices, spin_means, energy_list = metropolis.run()
 
 step_algo = np.arange(0, len(spin_means), 1)
 
@@ -232,8 +228,15 @@ plt.xlabel("Étape")
 plt.ylabel(r"$E/J$")
 
 plt.figure(3)
-plt.imshow(lattice, vmin=-1, vmax=1, cmap="seismic")
+plt.imshow(lattices[0], vmin=-1, vmax=1)
+plt.title("Grille initiale")
+plt.xticks([])
+plt.yticks([])
+
+plt.figure(4)
+plt.imshow(lattices[-1], vmin=-1, vmax=1)
 plt.title("Grille finale")
 plt.xticks([])
 plt.yticks([])
+
 plt.show()
