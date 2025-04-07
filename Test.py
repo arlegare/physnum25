@@ -9,22 +9,11 @@ import time
 
 @numba.njit
 def initialize_lattice(size, pourcentage_up=0.70):
+    """
+    Initialise une grille avec un certain pourcentage de spins orienté up ou down.
+    """
     lattice = np.random.random((size, size))
     return np.where(lattice < pourcentage_up, 1, -1)
-
-@numba.njit
-def extended_lattice(lattice): 
-    """
-    Applique les CF périodiques (Pac-Man) à la grille 2D.
-    L'astuce repose sur l'ajout de bordures de 1 ligne/colonne autour de la grille. 
-    La dimension effective de la grille est donc de (N+2) x (N+2). 
-    """
-    n = lattice.shape[0] # Taille de la grille
-
-    lattice_extended = np.concatenate([lattice, lattice, lattice], axis=1)  # On applique les CF à gauche et à droite
-    lattice_extended = np.concatenate([lattice_extended, lattice_extended, lattice_extended], axis=0)  # On applique les CF en haut et en bas.
-
-    return lattice_extended[n-1:2*n+1, n-1:2*n+1] 
 
 # La convolution revient à faire la somme sur les s_j, où j correspond aux plus proches voisins (du mask).
 """
