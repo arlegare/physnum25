@@ -124,9 +124,6 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size):
         row = np.random.randint(0, size)
         col = np.random.randint(0, size)
 
-        #old_spin = lattice[row, col]
-        lattice[row, col] *= -1  # Essai de flip
-
         new_lattice = lattice.copy()
         new_lattice[row][col] *= -1 # Flippage d'un spin au hasard (teneur Monte Carlo du problème...)
         
