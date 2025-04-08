@@ -216,12 +216,12 @@ print("Temps d'exécution : ", time.time() - start_time)
 
 plt.figure(1)
 plt.plot(step_algo, spin_means)
-plt.xlabel("Étape")
+plt.xlabel("Pas de la simulation")
 plt.ylabel(r"$\langle M \rangle $")
 
 plt.figure(2)
 plt.plot(step_algo, energy_list)
-plt.xlabel("Étape")
+plt.xlabel("Pas de la simulation")
 plt.ylabel(r"$E/J$")
 
 plt.figure(3)
