@@ -6,6 +6,7 @@ import scipy.constants as cte
 from matplotlib.animation import FuncAnimation
 import time
 
+
 def initialize_lattice(size, pourcentage_up=0.8):
     #  Initialise une grille avec un certain pourcentage de spins orienté up ou down
     lattice = np.zeros((size, size))
