@@ -7,19 +7,22 @@ import time
 import os
 import sys
 
+## Permettre le choix entre méthode avec boucles for accélérées par Numba, méthode avec FFT
+## Permettra de faire des tests de rapidité!
+
 @nb.njit(nopython=True)
 def microstate_energy(lattice, h, size):
 
     """
     Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins; h : composante Z du champ magnétique).
 
-    Args:
+    Entrée :
         lattice (np.ndarray): Configuration de spins.
         h (float): H/J, où  Composante Z du champ magnétique.
         betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
         size (int): Taille de la grille.
 
-    Returns:
+    Sortie :
         float: Énergie totale du micro-état.
     """
 
@@ -48,11 +51,11 @@ def convolution_2d_periodic(lattice, kernel):
         """
         Effectue une convolution 2D avec conditions aux limites périodiques.
 
-        Args:
+        Entrée :
             lattice (np.ndarray): Grille de spins.
             kernel (np.ndarray): Noyau de convolution.
 
-        Returns:
+        Sortie :
             np.ndarray: Résultat de la convolution.
         """
 
@@ -75,12 +78,43 @@ def convolution_2d_periodic(lattice, kernel):
 
         return result
 
+# La convolution revient à faire la somme sur les s_j, où j correspond aux plus proches voisins (du mask).
+def convolution_2d_avec_fft(lattice, mask):
+    """
+    Effectue une convolution 2D en exploitant la FFT.
+    Forme compatible avec une accélération par Numba.
+    """
+    if lattice.shape[0] % 2 == 0:
+        raise ValueError("La dimension de la grille doit être impaire.")
+    
+    # On effectue la transformée de Fourier des deux matrices.
+    lattice_fourier = np.fft.fft2(lattice)
+    #mask_fourier = np.fft.fft2(np.flipud(np.fliplr(mask))) 
+    mask_fourier = np.fft.fft2(np.fft.ifftshift(mask), s=lattice.shape)
+
+   # Multiplication dans le domaine fréquentiel
+    cc_fourier = lattice_fourier * mask_fourier
+
+    # Transformée inverse pour revenir dans l'espace réel
+    cc = np.real(np.fft.ifft2(cc_fourier))
+
+    # On multiplie les transformées dans le domaine fréquentiel.
+    #mask_fourier_padded = np.pad(mask_fourier, (lattice.shape[0]-3+1)//2) 
+    #cc = np.real(np.fft.ifft2(lattice_fourier * mask_fourier_padded))  # Transformée inverse pour revenir dans l'espace réel
+
+    # On centre le résultat.
+    #m, n = lattice.shape
+    #cc = np.roll(cc, -m // 2 + 1, axis=0)
+    #cc = np.roll(cc, -n // 2 + 1, axis=1)
+
+    return cc
+
 @nb.njit(nopython=True)
 def interaction_energy(lattice, row, col, h, size):
     """
     Calcule l'énergie d'interaction pour un spin donné.
 
-    Args :
+    Entrée  :
         lattice (np.ndarray): Grille de spins.
         row (int): Indice de la ligne du spin.
         col (int): Indice de la colonne du spin.
@@ -88,7 +122,7 @@ def interaction_energy(lattice, row, col, h, size):
         betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
         size (int): Taille de la grille.
 
-    Renvoie :
+    Sortie :
         float: Énergie d'interaction pour le spin donné.
     """
 
@@ -104,15 +138,15 @@ def interaction_energy(lattice, row, col, h, size):
     return -h * spin - spin * voisinage
 
 @nb.njit(nopython=True)
-def find_equilibrium(lattice, n_iter, betaJ, h, size):
+def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="numba"):
     """
     Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis.
 
-    Args:
+    Entrée :
         betaJ (float): Valeur de beta * J (normalisée).
         h (float): Champ magnétique externe.
 
-    Returns:
+    Sortie :
         tuple: Liste des grilles, énergie finale, liste des moyennes des spins, liste des énergies.
     """
     energy = microstate_energy(lattice, h, size) # Énergie initiale du système
@@ -129,12 +163,12 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size):
         
         # Terme dû au champ + terme de corrélation avec conditions frontières périodiques.
         # On calcule seulement l'énergie du spin concerné puisque les autres ne changent pas.
-        E_i = interaction_energy(lattice, row, col, h, size) # Avant le flip.
-        E_f = interaction_energy(new_lattice, row, col, h, size) # Après le flip.
+        E_i = interaction_energy(lattice, row, col, h, size, convol) # Avant le flip.
+        E_f = interaction_energy(new_lattice, row, col, h, size, convol) # Après le flip.
 
         DeltaE = E_f - E_i  # Variation d'énergie
 
-        # Si l'énergie du nouveau microétat est plus grande, on flip seulement avec la probabilité donnée par l'équation avec l'exponentielle
+        # Si l'énergie du nouveau microétat est plus grande, on flippe seulement avec la probabilité donnée par l'équation avec l'exponentielle
         if DeltaE > 0 and np.random.random() < np.exp(-betaJ * DeltaE):  
             lattice = new_lattice
             energy += DeltaE
@@ -150,11 +184,11 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size):
     return lattice_list, spin_mean_list, energy_list
 
 class Metropolis():
-    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80):
+    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="numba"):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
-        Args:
+        Entrée :
             n_iter (int): Nombre d'itérations pour la simulation.
             lattice_size (int): Taille de la grille de spins.
             magnetic_field (float): Champ magnétique externe.
@@ -167,6 +201,7 @@ class Metropolis():
         self.h = magnetic_field  # Champ magnétique externe.
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  # Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1)
+        self.convol = convol
 
         if previous_lattice is not None:
             self.lattice = previous_lattice
@@ -194,7 +229,7 @@ class Metropolis():
             tuple: Liste des grilles, liste des moyennes des spins, liste des énergies.
         """
 
-        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size)
+        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size, self.convol)
 
 
 
@@ -205,12 +240,12 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=30000, lattice_size=100, magnetic_field=0, betaJ=0.2, pourcentage_up=0.8)
+metropolis = Metropolis(n_iter=30000, lattice_size=100, magnetic_field=0, betaJ=0.2, pourcentage_up=0.8, convol="FFT")
 
-# Trouver l'état d'équilibre en utilisant la méthode `run`
+# Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
 
-step_algo = np.arange(0, len(spin_means), 1)
+step_algo = np.arange(0, len(spin_means), 1) # Itérations de la "descente" Metropolis
 
 print("Temps d'exécution : ", time.time() - start_time)
 
