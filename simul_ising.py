@@ -1,17 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import numba as nb
+#import numba as nb
 import scipy.ndimage as sc
 import scipy.constants as cte
 import time
 import os
 import sys
 
-## Permettre le choix entre méthode avec boucles for accélérées par Numba, méthode avec FFT
+## Permettre le choix entre méthode avec boucles for accélérées par Numba, méthode avec FFT.
 ## Permettre de faire des tests de rapidité!
 ## Simuler en batch. Parallélisation? -> Chiant à mettre sur windows, donc devra rester sur la tour.
 ## Quantification de l'aire de la courbe pour constante? 
 ## Lien avec dimension fractale?
+## Permettre des CF ouvertes et fermées pour ajouter un élément de discussion.
+## Critère de convergence plutôt qu'un nombre de pas imposé (avec tout même limite "dure" de pas au cas où)
 
 def convolution_2d_fft(lattice, kernel):
     """
@@ -60,8 +62,8 @@ def convolution_2d_mitaine(lattice, kernel):
             acc = 0.0
             for u in range(-kh2, kh2 + 1):
                 for v in range(-kw2, kw2 + 1):
-                    ni = (i + u) % N
-                    nj = (j + v) % M
+                    ni = (i + u) % N # Conditions périodiques en x
+                    nj = (j + v) % M # Conditions périodiques en y
                     acc += lattice[ni, nj] * kernel[u + kh2, v + kw2]
             result[i, j] = acc
 
@@ -80,41 +82,43 @@ def extended_lattice(lattice):
 
     return lattice_extended[n-1:2*n+1, n-1:2*n+1] 
 
-def correlation_energy(lattice, method="scipy"): 
+def correlation_energy(lattice, method="scipy"):
+    # La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
+    match method:
+        case "fft":
+            mask = np.ones((3,3), dtype=int)  # Matrice 2D avec 1 seulement aux voisins plus proche (connectivité=1).
+            mask[1,1] = 0  # Le spin est lui-même exclu de la somme.
+            grille_etendue = extended_lattice(lattice)  # On applique les CF périodiques (Pac-Man)
+            energy_array = -lattice * convolution_2d_fft(grille_etendue, mask)[1:lattice.shape[0]+1,1:lattice.shape[0]+1]
 
-    if method == "scipy":
+            return np.sum(energy_array)
 
-        mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
-        mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
+        case "mitaine":
+            mask = np.ones((3,3), dtype=int)  # Matrice 2D avec 1 seulement aux voisins plus proche (connectivité=1).
+            mask[1,1] = 0  # Le spin est lui-même exclu de la somme.
+            energy_array = -lattice * convolution_2d_mitaine(lattice, mask)#[1:lattice.shape[0]+1,1:lattice.shape[0]+1]
+            return np.sum(energy_array)
+        
+        case "scipy":
+            mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
+            mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
 
-        # On applique les conditions frontières périodiques avec l'argument wrap. 
-        # La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
-        energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
+            # On applique les conditions frontières périodiques avec l'argument wrap. 
+            energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
 
-        return np.sum(energy_array)
+            return np.sum(energy_array)
+        
+        case default: # Méthode SciPy par défaut
+            mask = sc.generate_binary_structure(2,1)  # Matrice 2D avec True seulement aux voisins plus proche (connectivité=1)
+            mask[1,1] = False  # On veut pas compter le spin lui même dans la somme
+
+            # On applique les conditions frontières périodiques avec l'argument wrap. 
+            energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  
+
+            return np.sum(energy_array)
+
     
-    if method == "fft":
-
-        mask = np.ones((3,3), dtype=int)  # Matrice 2D avec 1 seulement aux voisins plus proche (connectivité=1).
-        mask[1,1] = 0  # Le spin est lui-même exclu de la somme.
-
-        # Utilisation de la fonction convolution_2d_avec_fft pour calculer l'énergie des interactions.
-        grille_etendue = extended_lattice(lattice)  # On applique les CF périodiques (Pac-Man)
-        energy_array = -lattice * convolution_2d_fft(grille_etendue, mask)[1:lattice.shape[0]+1,1:lattice.shape[0]+1]
-
-        return np.sum(energy_array)
-    
-    if method == "numba":
-        mask = np.ones((3,3), dtype=int)  # Matrice 2D avec 1 seulement aux voisins plus proche (connectivité=1).
-        mask[1,1] = 0  # Le spin est lui-même exclu de la somme.
-
-        #grille_etendue = extended_lattice(lattice)  # On applique les CF périodiques (Pac-Man)
-        energy_array = -lattice * convolution_2d_mitaine(lattice, mask)#[1:lattice.shape[0]+1,1:lattice.shape[0]+1]
-
-        return np.sum(energy_array)
-
-    
-def microstate_energy(lattice, h, method="scipy"):
+def microstate_energy(lattice, h, coupling, method="scipy"):
     """
     Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins; h : composante Z du champ magnétique).
 
@@ -124,18 +128,17 @@ def microstate_energy(lattice, h, method="scipy"):
     """
     N = lattice.shape[0]
     energie_mag = 0.0
+    energie_corr = 0.0
 
     # Contribution du champ magnétique externe
     energie_mag -= h * np.sum(lattice)  # Utilisation de la somme vectorisée pour accélérer le calcul.
-
     # Contribution des interactions entre voisins
-    energie_corr = correlation_energy(lattice, method=method)
+    energie_corr = correlation_energy(lattice, method)
 
     return energie_mag + energie_corr
 
 
-#@nb.njit(nopython=True)
-def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="numba"):
+def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1):
     """
     Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis.
 
@@ -151,7 +154,16 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="numba"):
     energy_list = [energy]
     lattice_list = [lattice.copy()]
 
-    for _ in range(n_iter):
+    if n_iter==0:
+        n_iter = n_iter_max
+        condition = False # Force la vérification de la variation d'énergie pour juger de la stabilisation
+    
+    cnt = 0
+
+    while condition or energy_variation < delta_E_static:
+        if cnt >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
+            break
+
         row = np.random.randint(0, size)
         col = np.random.randint(0, size)
 
@@ -162,10 +174,6 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="numba"):
         # On calcule seulement l'énergie du spin concerné puisque les autres ne changent pas.
         E_i = microstate_energy(lattice, h, convol)
         E_f = microstate_energy(new_lattice, h, convol)
-
-        #E_i = interaction_energy(lattice, row, col, h, size, convol) # Avant le flip.
-        #E_f = interaction_energy(new_lattice, row, col, h, size, convol) # Après le flip.
-
         DeltaE = E_f - E_i  # Variation d'énergie
 
         # Si l'énergie du nouveau microétat est plus grande, on flippe seulement avec la probabilité donnée par l'équation avec l'exponentielle
@@ -180,11 +188,15 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="numba"):
 
         spin_mean_list.append(np.mean(lattice))
         energy_list.append(energy)
+        energy_variation = energy_list[-1] - energy_list[-2]
         lattice_list.append(lattice.copy())
+
+        cnt += 1
+
     return lattice_list, spin_mean_list, energy_list
 
 class Metropolis():
-    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="numba"):
+    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="scipy"):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -200,7 +212,9 @@ class Metropolis():
         self.size = lattice_size  # Dimension de la grille (carrée) de spins. 
         self.h = magnetic_field  # Champ magnétique externe.
         #self.temperature = temperature # Température
-        self.betaJ = betaJ # betaJ
+
+        #self.betaJ = couplage / (cte.k * temperature)  # Calcul de betaJ à partir de la température et du couplage
+        self.betaJ = betaJ
         self.up_perc = pourcentage_up  # Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1)
         self.convol = convol # Méthode de convolution. Comparer les méthdodes devient un élément de discussion intéressant.
 
@@ -237,11 +251,10 @@ class Metropolis():
 # ----------Exemple d'utilisation de la classe Metropolis----------
 # L'idéal serait d'importer cette classe dans un autre fichier pour l'utiliser.
 
-
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=30000, lattice_size=100, magnetic_field=0, betaJ=0.2, pourcentage_up=0.8, convol="FFT")
+metropolis = Metropolis(n_iter=0, lattice_size=100, magnetic_field=0.5, betaJ=10, pourcentage_up=0.8, convol="scipy")
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
@@ -254,11 +267,13 @@ plt.figure(1)
 plt.plot(step_algo, spin_means)
 plt.xlabel("Pas de la simulation")
 plt.ylabel(r"$\langle M \rangle $")
+plt.title("Magnétisation")
 
 plt.figure(2)
 plt.plot(step_algo, energy_list)
 plt.xlabel("Pas de la simulation")
 plt.ylabel(r"$E/J$")
+plt.title("Énergie")
 
 plt.figure(3)
 plt.imshow(lattices[0], vmin=-1, vmax=1)
