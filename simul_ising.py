@@ -7,8 +7,6 @@ import time
 import os
 import sys
 
-## Permettre le choix entre méthode avec boucles for accélérées par Numba, méthode avec FFT.
-## Permettre de faire des tests de rapidité!
 ## Simuler en batch. Parallélisation? -> Chiant à mettre sur windows, donc devra rester sur la tour.
 ## Quantification de l'aire de la courbe pour constante? 
 ## Lien avec dimension fractale?
@@ -154,13 +152,17 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
     energy_list = [energy]
     lattice_list = [lattice.copy()]
 
-    if n_iter==0:
-        n_iter = n_iter_max
+    condition = True # Initialisation de la condition d'une while True (par défaut, à moins qu'on veuille vérifier la variation d'énergie)
+    energy_variation = energy # Initialisation de la variation d'énergie à une valeur assez élevée
+    cnt = 0 # Initialisation du compteur
+
+    if n_iter==0: # Manière de se fier uniquement au critère d'énergie
+        n_iter = n_iter_max # Le nombre d'itérations 
         condition = False # Force la vérification de la variation d'énergie pour juger de la stabilisation
     
-    cnt = 0
 
-    while condition or energy_variation < delta_E_static:
+
+    while condition or energy_variation > delta_E_static: # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
         if cnt >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
             break
 
@@ -188,15 +190,15 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
 
         spin_mean_list.append(np.mean(lattice))
         energy_list.append(energy)
-        energy_variation = energy_list[-1] - energy_list[-2]
         lattice_list.append(lattice.copy())
 
+        energy_variation = energy_list[-1] - energy_list[-2] # Mise à jour de la variation d'énergie
         cnt += 1
 
     return lattice_list, spin_mean_list, energy_list
 
 class Metropolis():
-    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="scipy"):
+    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -217,6 +219,8 @@ class Metropolis():
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  # Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1)
         self.convol = convol # Méthode de convolution. Comparer les méthdodes devient un élément de discussion intéressant.
+        self.n_iter_max = n_iter_max # Si ça converge pas, permet d'éviter le freeze.
+        self.delta_E_static = delta_E_static # Différence d'énergie (petite) comme critère de convergence.
 
         if previous_lattice is not None:
             self.lattice = previous_lattice
@@ -244,7 +248,7 @@ class Metropolis():
             tuple: Liste des grilles, liste des moyennes des spins, liste des énergies.
         """
 
-        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size, self.convol)
+        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size, self.convol, self.n_iter_max, self.delta_E_static)
 
 
 
@@ -254,7 +258,7 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=0, lattice_size=100, magnetic_field=0.5, betaJ=10, pourcentage_up=0.8, convol="scipy")
+metropolis = Metropolis(n_iter=10000, lattice_size=100, magnetic_field=0.5, betaJ=10, pourcentage_up=0.8, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1)
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
