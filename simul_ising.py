@@ -159,11 +159,10 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
     if n_iter==0: # Manière de se fier uniquement au critère d'énergie
         n_iter = n_iter_max # Le nombre d'itérations 
         condition = False # Force la vérification de la variation d'énergie pour juger de la stabilisation
-    
 
-
-    while condition or energy_variation > delta_E_static: # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
+    while condition or (energy_variation < delta_E_static): # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
         if cnt >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
+            print("Sortie de boucle")
             break
 
         row = np.random.randint(0, size)
@@ -193,6 +192,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
         lattice_list.append(lattice.copy())
 
         energy_variation = energy_list[-1] - energy_list[-2] # Mise à jour de la variation d'énergie
+        #print("DeltaE =", energy_variation)
         cnt += 1
 
     return lattice_list, spin_mean_list, energy_list
@@ -258,11 +258,10 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=10000, lattice_size=100, magnetic_field=0.5, betaJ=10, pourcentage_up=0.8, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1)
+metropolis = Metropolis(n_iter=20000, lattice_size=100, magnetic_field=0.1, betaJ=5, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1)
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
-
 step_algo = np.arange(0, len(spin_means), 1) # Itérations de la "descente" Metropolis
 
 print("Temps d'exécution : ", time.time() - start_time)
