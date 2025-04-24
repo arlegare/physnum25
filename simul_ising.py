@@ -8,7 +8,7 @@ import os
 import sys
 
 ## Simuler en batch. Parallélisation? -> Chiant à mettre sur windows, donc devra rester sur la tour.
-## Quantification de l'aire de la courbe pour constante? 
+## Quantification de l'aire de la courbe pour constante selon betaJ? 
 ## Lien avec dimension fractale?
 ## Permettre des CF ouvertes et fermées pour ajouter un élément de discussion.
 ## Critère de convergence plutôt qu'un nombre de pas imposé (avec tout même limite "dure" de pas au cas où)
@@ -136,7 +136,7 @@ def microstate_energy(lattice, h, coupling, method="scipy"):
     return energie_mag + energie_corr
 
 
-def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1):
+def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), delta_E_static=0, delta_E_buffer=100, seed=None):
     """
     Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis.
 
@@ -147,26 +147,28 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
     Sortie :
         tuple: Liste des grilles, énergie finale, liste des moyennes des spins, liste des énergies.
     """
+    rng = np.random.default_rng(seed)  # Générateur indépendant. 
+
     energy = microstate_energy(lattice, h, size) # Énergie initiale du système
     spin_mean_list = [np.mean(lattice)]
     energy_list = [energy]
     lattice_list = [lattice.copy()]
 
     condition = True # Initialisation de la condition d'une while True (par défaut, à moins qu'on veuille vérifier la variation d'énergie)
-    energy_variation = energy # Initialisation de la variation d'énergie à une valeur assez élevée
+    energy_variation = -1e6 # Initialisation de la variation d'énergie à une valeur assez élevée
     cnt = 0 # Initialisation du compteur
 
     if n_iter==0: # Manière de se fier uniquement au critère d'énergie
         n_iter = n_iter_max # Le nombre d'itérations 
         condition = False # Force la vérification de la variation d'énergie pour juger de la stabilisation
 
-    while condition or (energy_variation < delta_E_static): # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
+    while condition or (-energy_variation >= delta_E_static): # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
         if cnt >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
             print("Sortie de boucle")
             break
 
-        row = np.random.randint(0, size)
-        col = np.random.randint(0, size)
+        row = rng.integers(0, size)
+        col = rng.integers(0, size)
 
         new_lattice = lattice.copy()
         new_lattice[row][col] *= -1 # Flippage d'un spin au hasard (teneur Monte Carlo du problème...)
@@ -178,7 +180,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
         DeltaE = E_f - E_i  # Variation d'énergie
 
         # Si l'énergie du nouveau microétat est plus grande, on flippe seulement avec la probabilité donnée par l'équation avec l'exponentielle
-        if DeltaE > 0 and np.random.random() < np.exp(-betaJ * DeltaE):  
+        if DeltaE > 0 and rng.random() < np.exp(-betaJ * DeltaE):  
             lattice = new_lattice
             energy += DeltaE
             
@@ -191,14 +193,25 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
         energy_list.append(energy)
         lattice_list.append(lattice.copy())
 
-        energy_variation = energy_list[-1] - energy_list[-2] # Mise à jour de la variation d'énergie
-        #print("DeltaE =", energy_variation)
+        # La variation d'énergie est la chute moyenne sur le buffer, ou sur les cnt premiers éléments si cnt n'a pas dépassé la taille du buffer.
+        i_start = int(np.max([0, cnt+1-delta_E_buffer]))
+        i_stop = cnt+1
+
+        # Mise à jour de la variation moyenne d'énergie
+        if i_stop > delta_E_buffer: 
+            energy_variation = np.mean(np.diff(energy_list[i_start:i_stop])) * betaJ
+        else: # Pour la première itération, vu que np.diff réduit la taille de la liste à raison d'1 élément.
+            energy_variation = -1e3
+
+        #print(f"DeltaE at {cnt} =", energy_variation)
         cnt += 1
+
+    print("L'algo Metro a convergé!")
 
     return lattice_list, spin_mean_list, energy_list
 
 class Metropolis():
-    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice = None, pourcentage_up=0.80, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1):
+    def __init__(self, n_iter, lattice_size, magnetic_field, betaJ, previous_lattice=None, pourcentage_up=0.80, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1, delta_E_buffer=100, seed=None):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -210,7 +223,7 @@ class Metropolis():
             previous_lattice (np.ndarray, optional): Grille de spins initiale. Si None, une grille sera générée.
         """
     
-        self.n_iter = n_iter  # Nb d'itérations/steps pour la simulation. Par ex. choisir assez long pour atteindre l'équilibre pour une valeur de (T,B).
+        self.n_iter = n_iter  # Nb d'itérations/steps pour la simulation. Par ex. choisir assez long pour atteindre l'équilibre pour une valeur de (T,h).
         self.size = lattice_size  # Dimension de la grille (carrée) de spins. 
         self.h = magnetic_field  # Champ magnétique externe.
         #self.temperature = temperature # Température
@@ -221,6 +234,10 @@ class Metropolis():
         self.convol = convol # Méthode de convolution. Comparer les méthdodes devient un élément de discussion intéressant.
         self.n_iter_max = n_iter_max # Si ça converge pas, permet d'éviter le freeze.
         self.delta_E_static = delta_E_static # Différence d'énergie (petite) comme critère de convergence.
+        self.delta_E_buffer = delta_E_buffer # Taille du buffer contenant les valeurs d'énergie pour la variation considérée.
+        self.seed = seed
+
+        self.rng = np.random.default_rng(self.seed)  # Générateur de seed pseudo-aléatoire indépendant. 
 
         if previous_lattice is not None:
             self.lattice = previous_lattice
@@ -235,11 +252,20 @@ class Metropolis():
             np.ndarray : Grille de spins initialisée.
         """
 
-        init_lattice = np.random.random((self.size, self.size))
+        init_lattice = self.rng.random((self.size, self.size))
 
         return np.where(init_lattice < self.up_perc, 1, -1).astype("int8")
     
-   
+    def summary(self):
+        return {
+            "seed": self.seed,
+            "lattice_shape": self.lattice.shape,
+            "initial_magnetization": np.mean(self.lattice),
+            "magnetic_field": self.h,
+            "betaJ": self.betaJ,
+            "convol": self.convol
+        }
+    
     def run(self):
         """
         Exécute l'algorithme de Metropolis.
@@ -248,7 +274,7 @@ class Metropolis():
             tuple: Liste des grilles, liste des moyennes des spins, liste des énergies.
         """
 
-        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size, self.convol, self.n_iter_max, self.delta_E_static)
+        return find_equilibrium(self.lattice, self.n_iter, self.betaJ, self.h, self.size, self.convol, self.n_iter_max, self.delta_E_static, self.delta_E_buffer, self.seed)
 
 
 
@@ -258,7 +284,9 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=20000, lattice_size=100, magnetic_field=0.1, betaJ=5, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1)
+#metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=-0.1, betaJ=1, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1, delta_E_buffer=100)
+
+metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=0.1, betaJ=1, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=1e-4, delta_E_buffer=300, seed=42)
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
