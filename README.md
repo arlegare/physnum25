@@ -23,7 +23,6 @@ cd "dossier global du projet"
 python -m venv venv
 source ../venv/bin/activate
 cd physnum25
-pip install -r requirements.txt
 ```
 
 Si vous êtes sur VScode, il faut ensuite cliquer manuellement sur "Python: Select Interpreter".
