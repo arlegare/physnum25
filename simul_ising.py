@@ -116,9 +116,9 @@ def correlation_energy(lattice, method="scipy"):
             return np.sum(energy_array)
 
     
-def microstate_energy(lattice, h, coupling, method="scipy"):
+def microstate_energy(lattice, h, method="scipy"):
     """
-    Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins; h : composante Z du champ magnétique).
+    Calcule l'énergie totale d'un micro-état donné (lattice : configuration de spins; h : composante Z du champ magnétique normalisée avec J).
 
     On doit tenir compte de deux contributions : 
         1) les voisins immédiats;
@@ -142,7 +142,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
 
     Entrée :
         betaJ (float): Valeur de beta * J (normalisée).
-        h (float): Champ magnétique externe.
+        h (float): Champ magnétique externe normalisé par la constante de couplage (h = H/J).
 
     Sortie :
         tuple: Liste des grilles, énergie finale, liste des moyennes des spins, liste des énergies.
