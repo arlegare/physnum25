@@ -284,8 +284,6 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-#metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=-0.1, betaJ=1, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=0.1, delta_E_buffer=100)
-
 metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=0.1, betaJ=1, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=1e-4, delta_E_buffer=300, seed=42)
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
