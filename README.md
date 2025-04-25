@@ -1,11 +1,7 @@
 
 # TODO
-* Implémenter Numba pour accélérer l'algorithme Metropolis (Monte-Carlo)
-* Enregistrement de données brutes d'une simulation unique de Metropolis (en format TXT?)
-* Visualisation d'une simulation unique (GIF?)
 * Automatiser les simulations multiples pour une boucle complète d'hystérésis
 * BONUS : Système de plusieurs modèles d'Ising interagissant ensemble
-
 
 
 # Exploration numérique du modèle d'Ising

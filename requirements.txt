@@ -4,3 +4,6 @@ scipy
 numba
 os
 sys
+hdf5
+tqdm
+time

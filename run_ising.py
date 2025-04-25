@@ -4,12 +4,14 @@ from simul_ising import Metropolis  #  On importe la classe.
 from tqdm import tqdm # Pour afficher où on est rendu dans la série de simulations.
 import matplotlib.pyplot as plt
 
-
-
 def save_simulation_to_hdf5(filename, run_id, sim, lattices, spin_means, energy_list):
     with h5py.File(filename, 'a') as f:
-        grp = f.create_group(f"run_{run_id:04d}")
+        group_name = f"run_{run_id:04d}"
+        if group_name in f:
+            print(f"Warning: Group {group_name} already exists. Skipping save.")
+            return  # On saute si le groupe d'enregistrement existe déjà. 
 
+        grp = f.create_group(group_name)
         grp.create_dataset("initial_lattice", data=sim.lattice)
         grp.create_dataset("final_lattice", data=lattices[-1])
         grp.create_dataset("energy", data=energy_list)
@@ -22,11 +24,10 @@ def save_simulation_to_hdf5(filename, run_id, sim, lattices, spin_means, energy_
         grp.attrs["n_iter"] = sim.n_iter
         grp.attrs["convol"] = sim.convol
 
-
 def run_batch_simulations(h_range, n_seeds, filename="data/results.h5"):
     betaJ = 1.0 # Couplage adimensionné (merci Sam).
     size = 64 # Un beau multiple de 2, comme on aime.
-    pourcentage_up = 0.6 # On donne un avantage aux spins up, histoire d'aller chercher le point fixe stable du haut!
+    pourcentage_up = 0.5 # On peut donner un avantage aux spins up/down, histoire d'aller chercher préférentiellement un point fixe stable!
 
     final_magnetizations = []
     std_magnetizations = []
@@ -56,9 +57,8 @@ def run_batch_simulations(h_range, n_seeds, filename="data/results.h5"):
 
     return h_range, final_magnetizations, std_magnetizations
 
-
-if __name__ == "__main__": # Fancy pythonic attitude, même si mon coeur est au langage Cé
-    h_range = np.linspace(-0.4, 0.4, 9)
+if __name__ == "__main__": # Fancy pythonic attitude, même si mon coeur est au langage C.
+    h_range = np.linspace(-0.2, 0.2, 2)
     print(h_range)
     h_vals, mag_means, mag_stds = run_batch_simulations(h_range, n_seeds=20)
 
