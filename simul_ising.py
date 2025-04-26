@@ -206,7 +206,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
         #print(f"DeltaE at {cnt} =", energy_variation)
         cnt += 1
 
-    print("L'algo Metro a convergé!")
+    #print("L'algo Metro a convergé!")
 
     return lattice_list, spin_mean_list, energy_list
 
@@ -281,6 +281,7 @@ class Metropolis():
 # ----------Exemple d'utilisation de la classe Metropolis----------
 # L'idéal serait d'importer cette classe dans un autre fichier pour l'utiliser.
 
+"""
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
@@ -317,3 +318,4 @@ plt.xticks([])
 plt.yticks([])
 
 plt.show()
+"""
