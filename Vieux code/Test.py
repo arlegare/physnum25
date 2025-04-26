@@ -67,7 +67,7 @@ energy = microstate_energy(initial_lattice, 0)
 h_list = np.concatenate((np.arange(-1, 1, 0.05), np.arange(1, -1, -0.05)))
 spin_mean_list = []
 for i in range(len(h_list)):
-    lattices, energy, spin_means, energy_list = find_equilibrium(0.7, h_list[i], initial_lattice, 30000, energy)
+    lattices, energy, spin_means, energy_list = find_equilibrium(0.5, h_list[i], initial_lattice, 30000, energy)
     spin_mean_list.append(spin_means[-1])
     initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
 

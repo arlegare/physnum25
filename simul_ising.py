@@ -281,7 +281,7 @@ class Metropolis():
 # ----------Exemple d'utilisation de la classe Metropolis----------
 # L'idéal serait d'importer cette classe dans un autre fichier pour l'utiliser.
 
-"""
+
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
@@ -318,4 +318,3 @@ plt.xticks([])
 plt.yticks([])
 
 plt.show()
-"""
