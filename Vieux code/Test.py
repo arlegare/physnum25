@@ -60,13 +60,28 @@ def find_equilibrium(betaJ, h,  lattice, n_iter, energy):
         list_lattices.append(lattice)
     return list_lattices, energy, spin_mean_list, energy_list
 
-start_time = time.time()
-initial_lattice = initialize_lattice(100)
+#start_time = time.time()
+initial_lattice = initialize_lattice(64, pourcentage_up=0.0)
 energy = microstate_energy(initial_lattice, 0)
-lattices, energy, spin_means, energy_list = find_equilibrium(0.2, 0, initial_lattice, 30000, energy)
-print("Execution time:", time.time() - start_time, "seconds") 
-step_algo = np.arange(0, len(spin_means), 1)
 
+h_list = np.concatenate((np.arange(-1, 1, 0.05), np.arange(1, -1, -0.05)))
+spin_mean_list = []
+for i in range(len(h_list)):
+    lattices, energy, spin_means, energy_list = find_equilibrium(0.7, h_list[i], initial_lattice, 30000, energy)
+    spin_mean_list.append(spin_means[-1])
+    initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
+
+plt.figure(0)
+plt.plot(h_list, spin_mean_list)
+plt.xlabel("h/J")
+plt.ylabel("Spin Mean")
+plt.show()
+
+
+#print("Execution time:", time.time() - start_time, "seconds") 
+#step_algo = np.arange(0, len(spin_means), 1)
+
+"""
 plt.figure(1)
 plt.plot(step_algo, spin_means)
 plt.xlabel("Step")
@@ -88,4 +103,5 @@ plt.imshow(lattices[0], vmin=-1, vmax=1)
 plt.title("Initial Lattice")
 plt.xticks([])
 plt.yticks([])
-plt.show()
+#plt.show()
+"""
