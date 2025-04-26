@@ -136,7 +136,7 @@ def microstate_energy(lattice, h, method="scipy"):
     return energie_mag + energie_corr
 
 
-def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), deltaE_static=0, deltaE_buffer=100, seed=None):
+def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), deltaE_static=0.005, deltaE_buffer=100, seed=None):
     """
     Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis-Hastings.
 
@@ -156,14 +156,14 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
 
     condition = True # Initialisation de la condition d'une while True (par défaut, à moins qu'on veuille vérifier la variation d'énergie)
     energy_variation = -1e6 # Initialisation de la variation d'énergie à une valeur assez élevée
-    cnt = 0 # Initialisation du compteur
+    iter = 0 # Initialisation du compteur
 
     if n_iter==0: # Manière de se fier uniquement au critère d'énergie
         n_iter = n_iter_max # Le nombre d'itérations 
         condition = False # Force la vérification de la variation d'énergie pour juger de la stabilisation
 
-    while condition or (-energy_variation >= deltaE_static): # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
-        if cnt >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
+    while condition or (np.abs(energy_variation) >= deltaE_static): # Soit on a un while True (n_iter prescrit), soit on vérifie la variation d'énergie
+        if iter >= n_iter: # Sortie de boucle si dépassement du nombre d'itérations imposé
             print("Sortie de boucle")
             break
 
@@ -193,18 +193,18 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
         energy_list.append(energy)
         lattice_list.append(lattice.copy())
 
-        # La variation d'énergie est la chute moyenne sur le buffer, ou sur les cnt premiers éléments si cnt n'a pas dépassé la taille du buffer.
-        i_start = int(np.max([0, cnt+1-deltaE_buffer]))
-        i_stop = cnt+1
+        # Si on a effectué un nombre d'itérations inférieur au buffer, on prend toutes les itérations précédentes, sinon on prend les dernières itérations données par le buffer.
+        i_start = int(np.max([0, iter+1-deltaE_buffer])) # Index de début qu'on prend pour le buffer (n_max permet de prendre en compte le cas où on est au début de la simulation et qu'on n'a pas encore atteint le buffer).
+        i_stop = iter+1 # Index de fin qu'on prend pour le buffer
 
         # Mise à jour de la variation moyenne d'énergie
         if i_stop > deltaE_buffer: 
-            energy_variation = np.mean(np.diff(energy_list[i_start:i_stop])) / betaJ
+            energy_variation = np.mean(np.diff(energy_list[i_start:i_stop]))
         else: # Pour la première itération, vu que np.diff réduit la taille de la liste à raison d'1 élément.
             energy_variation = -1e3
 
         #print(f"DeltaE at {cnt} =", energy_variation)
-        cnt += 1
+        iter += 1
 
     #print("L'algo Metro a convergé!")
 
@@ -285,7 +285,7 @@ class Metropolis():
 start_time = time.time()
 
 # Créer une instance de la classe Metropolis avec les paramètres souhaités
-metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=0.1, betaJ=1, pourcentage_up=0.6, convol="scipy", n_iter_max=int(1e9), delta_E_static=1e-4, delta_E_buffer=300, seed=42)
+metropolis = Metropolis(n_iter=0, lattice_size=64, magnetic_field=0.0, betaJ=0.1, pourcentage_up=0.7, convol="scipy", n_iter_max=int(1e9), deltaE_static=1e-5, deltaE_buffer=300, seed=None)
 
 # Trouver l'état d'équilibre en utilisant la méthode "run"
 lattices, spin_means, energy_list = metropolis.run()
