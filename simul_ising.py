@@ -138,7 +138,7 @@ def microstate_energy(lattice, h, method="scipy"):
 
 def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max=int(1e9), deltaE_static=0, deltaE_buffer=100, seed=None):
     """
-    Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis.
+    Trouve l'état d'équilibre en utilisant l'algorithme de Metropolis-Hastings.
 
     Entrée :
         betaJ (float): Valeur de beta * J (normalisée).
@@ -199,7 +199,7 @@ def find_equilibrium(lattice, n_iter, betaJ, h, size, convol="scipy", n_iter_max
 
         # Mise à jour de la variation moyenne d'énergie
         if i_stop > deltaE_buffer: 
-            energy_variation = np.mean(np.diff(energy_list[i_start:i_stop])) * betaJ
+            energy_variation = np.mean(np.diff(energy_list[i_start:i_stop])) / betaJ
         else: # Pour la première itération, vu que np.diff réduit la taille de la liste à raison d'1 élément.
             energy_variation = -1e3
 
