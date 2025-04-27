@@ -10,6 +10,51 @@ import sys
 import scipy as sp
 from numba import njit
 
+@njit(nogil=True)
+def metropolis_kernel(lattice, h, betaJ, n_iter):
+    size = lattice.shape[0]
+    energy = -h * lattice.sum()
+    for row in range(size):
+        for col in range(size):
+            energy += -lattice[row, col] * (
+                lattice[(row+1)%size, col] +
+                lattice[row, (col+1)%size]
+            )
+
+    spin_mean_list = [np.mean(lattice)] 
+    energy_list = [energy]                
+    list_lattices = [lattice.copy()]       
+
+    for iter in range(n_iter):
+        if iter % 1000 == 0:
+            print("h : ", h, "Iteration:", iter, "Energy:", energy)
+
+        row = np.random.randint(0, size)
+        col = np.random.randint(0, size)
+        s = lattice[row, col]
+
+        neighbors_sum = (
+            lattice[(row+1)%size, col]
+            + lattice[(row-1)%size, col]
+            + lattice[row, (col+1)%size]
+            + lattice[row, (col-1)%size]
+        )
+
+        DeltaE = 2 * s * (h + neighbors_sum)
+
+        if DeltaE <= 0 or np.random.random() < np.exp(-betaJ * DeltaE):
+            lattice[row, col] *= -1
+            energy += DeltaE
+
+        spin_mean_list.append(np.mean(lattice))
+        energy_list.append(energy)
+
+        if iter % 2000 == 0:
+            list_lattices.append(lattice.copy())
+
+    return lattice, energy, spin_mean_list, energy_list, list_lattices
+
+
 def standardize(matrice):  # standardisation des entrées de la matrice
     factor = (np.max(matrice)-np.min(matrice))**(-1)
     transl = np.min(matrice)

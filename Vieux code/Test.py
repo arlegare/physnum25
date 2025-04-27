@@ -31,7 +31,7 @@ def microstate_energy(lattice, h):
     energy_array = -lattice * sc.convolve(lattice, mask, mode='wrap')  # On applique les conditions frontières périodiques avec l'argument wrap. La convolution revient à faire la somme sur les s_j en prenant compte du fait que j correspond aux plus proches voisins
     return tot_energy + energy_array.sum()
 
-@num.njit(nogil=True)
+#@num.njit(nogil=True)
 def find_equilibrium(betaJ, h,  lattice, n_iter, energy):
     # BetaJ vu q'on a normalisé. Revient à diviser par J dans la formule de l'énergie
     # On commence par définir une nouvelle grille où on a flippé un spin aléatoirement
@@ -60,31 +60,34 @@ def find_equilibrium(betaJ, h,  lattice, n_iter, energy):
         list_lattices.append(lattice)
     return list_lattices, energy, spin_mean_list, energy_list
 
-#start_time = time.time()
-initial_lattice = initialize_lattice(64, pourcentage_up=0.7)
+start_time = time.time()
+initial_lattice = initialize_lattice(64, pourcentage_up=-1.0)
 energy = microstate_energy(initial_lattice, 0)
+
 
 h_list = np.concatenate((np.arange(-1, 1, 0.05), np.arange(1, -1, -0.05)))
 spin_mean_list = []
-#for i in range(len(h_list)):
- #   lattices, energy, spin_means, energy_list = find_equilibrium(0.5, h_list[i], initial_lattice, 30000, energy)
- #   spin_mean_list.append(spin_means[-1])
-  #  initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
+for i in range(len(h_list)):
+    lattices, energy, spin_means, energy_list = find_equilibrium(0.5, h_list[i], initial_lattice, 30000, energy)
+    spin_mean_list.append(spin_means[-1])
+    initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
 
-#plt.figure(0)
-#plt.plot(h_list, spin_mean_list)
-#plt.xlabel("h/J")
-#plt.ylabel("Spin Mean")
-#plt.show()
+plt.figure(0)
+plt.plot(h_list, spin_mean_list)
+plt.xlabel("h/J")
+plt.ylabel("Spin Mean")
+plt.show()
 
 
-#print("Execution time:", time.time() - start_time, "seconds") 
+"""
+lattices, energy, spin_means, energy_list = find_equilibrium(0.8, 0.0, initial_lattice, 300000, energy)
 
-lattices, energy, spin_means, energy_list = find_equilibrium(0.1, 0.0, initial_lattice, 300000, energy)
+print("Execution time:", time.time() - start_time, "seconds") 
 
 step_algo = np.arange(0, len(spin_means), 1)
 
-print(np.mean(np.diff(energy_list[280000:])))
+print(np.std(energy_list[299000:])/np.mean(energy_list[299000:]))
+print(np.std(spin_means[:1000])/np.mean(spin_means[:1000]))
 
 plt.figure(1)
 plt.plot(step_algo, spin_means)
@@ -108,3 +111,4 @@ plt.title("Initial Lattice")
 plt.xticks([])
 plt.yticks([])
 plt.show()
+"""
