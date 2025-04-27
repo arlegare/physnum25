@@ -126,7 +126,7 @@ class Metropolis():
             for iter in range(n_iter):
                 new_lattice = lattice.copy()
                 if iter % 1000 == 0:
-                    print(f"h = {h:.2f}, iter = {iter}, E = {energy:.2f}, ΔE_fluct = {energy_fluctuation:.2e}")
+                    print(f"h = {h:.2f}, iter = {iter}, E = {energy:.2f}, ΔE_fluct = {energy_fluctuation:.2e}") # État de la simulation tous les 1000 itérations
 
                 # On flip un spin aléatoire
                 row, col = rng.integers(0, size), rng.integers(0, size)
