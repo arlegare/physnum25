@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import scipy.ndimage as sc
 import time
 from numba import njit
-from functions import metropolis_kernel
+from functions import metropolis_fast
 
 class Metropolis():
-    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, n_iter_max=30000, seed=None):
+    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, seed=None):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -17,16 +17,13 @@ class Metropolis():
             betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
             previous_lattice (np.ndarray, optional): Grille de spins initiale. Si None, une grille sera générée.
             pourcentage_up (float): Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1).
-            n_iter_max (int): Nombre d'itérations maximal pour la simulation.
             seed (int, optional): Seed pour le générateur de nombres aléatoires. Si None, une seed aléatoire sera utilisée. L'argument peut seulement être utilisé si fast=False dans la fonction find_equilibrium.
         """
     
-        self.n_iter_max = n_iter_max
         self.size = lattice_size  
         self.h = magnetic_field  
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  
-        self.n_iter_max = n_iter_max 
         self.seed = seed
         self.rng = np.random.default_rng(self.seed)  # Générateur de seed pseudo-aléatoire indépendant. 
         self.energy_list = []  # Liste pour stocker les énergies à chaque itération.
@@ -79,12 +76,13 @@ class Metropolis():
         return energie_mag + np.sum(energy_array)  # On retourne l'énergie totale du micro-état.
 
 
-    def find_equilibrium(self, buffer = 5000, run_max=True, fluct_eq=0.002, fast=True, save_all=False):
+    def find_equilibrium(self, n_iter=30000, buffer = 5000, run_max=True, fluct_eq=0.002, fast=True, save_all=False):
         """
         Trouve l'équilibre du système en utilisant l'algorithme de Metropolis.
         
         Paramètres:
             buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie. Il s'agit de la fenêtre de points sur laquelle on calcule la fluctuation d'énergie. S'applique seulement si fast=False et run_max=False.
+            n_iter (int): Nombre d'itérations maximal pour la simulation.
             run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite. Sinon, la simulation s'arrête après n_iter_max itérations. Ceci s'applique seulement si fast=False. Dans le cas où fast=True, la simulation s'arrête toujours après n_iter_max itérations.
             fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True.
             fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_kernel assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
@@ -106,7 +104,6 @@ class Metropolis():
         betaJ = self.betaJ
         lattice = self.lattice.copy()
         energy = self.energy
-        n_iter = self.n_iter_max
         spin_mean_list = [np.mean(lattice)]
         list_lattices = [lattice.copy()]
         energy_list = [energy]
@@ -114,7 +111,7 @@ class Metropolis():
         energy_fluctuation = 1e6 # Initialisation de la fluctuation d'énergie pour les premiers pas de temps avant qu'on atteigne un nombre d'itérations suffisant pour calculer la fluctuation d'énergie.
 
         if fast:
-            lattice, energy, spin_mean_list, energy_list, list_lattices = metropolis_kernel(lattice, h, betaJ, n_iter, save_all)
+            lattice, energy, spin_mean_list, energy_list, list_lattices = metropolis_fast(lattice, h, betaJ, n_iter, save_all)
             # Actualisation des attributs de la classe avec les résultats de la simulation
             self.lattice = lattice
             self.energy = energy
@@ -247,7 +244,7 @@ class Metropolis():
         plt.show()
 
 
-    def plot_hysteresis(self, h_low=-1, h_high=1, resolution=0.05, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002):
+    def plot_hysteresis(self, h_low=-1, h_high=1, resolution=0.05, n_iter=30000, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002):
         """
         Trace la courbe d'hystérèse en faisant varier le champ magnétique.
         
@@ -255,6 +252,7 @@ class Metropolis():
             h_low (float): Valeur minimale du champ magnétique qu'on veut balayer.
             h_high (float): Valeur maximale du champ magnétique qu'on veut balayer.
             resolution (float): Résolution du balayage du champ magnétique. Plus la valeur est petite, plus le balayage est fin.
+            n_iter (int): Nombre d'itérations maximal pour la simulation.
             fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_kernel assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
             save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
             buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie dans le cas où fast=False et run_max=False.
@@ -262,12 +260,11 @@ class Metropolis():
             fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True dans le cas où fast=False. 
         """
 
-
         h_list = np.concatenate((np.arange(h_low, h_high, resolution), np.arange(h_high, h_low, -resolution)))
         spin_step_list = []
         for i in range(len(h_list)):
             self.h = h_list[i]  # On change le champ magnétique pour la prochaine itération
-            lattices, _, spin_means, _ = metro.find_equilibrium(fast, save_all, run_max, fluct_eq, buffer)
+            lattices, _, spin_means, _ = metro.find_equilibrium(n_iter, fast, save_all, run_max, fluct_eq, buffer)
             spin_step_list.append(spin_means[-1])
             metro.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
         plt.plot(h_list, spin_step_list)
@@ -278,6 +275,6 @@ class Metropolis():
         plt.show()
 
 
-metro = Metropolis(lattice_size=64, betaJ=0.05, magnetic_field=0.0, pourcentage_up=-1.0, n_iter_max=30000)
+metro = Metropolis(lattice_size=64, betaJ=0.05, magnetic_field=0.0, pourcentage_up=-1.0)
 
 metro.plot_hysteresis(h_low=-1, h_high=1, resolution=0.05, fast=True)

@@ -11,7 +11,7 @@ import scipy as sp
 from numba import njit
 
 @njit(nogil=True)
-def metropolis_kernel(lattice, h, betaJ, n_iter, save_all=False):
+def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
     """
     Version optimisée de l'algorithme Metropolis. 
        Celui-ci utilise la fonction njit de numba pour compiler le code en C et l'accélérer. Cependant, celle-ci ne permet pas d'utiliser un seed aléatoire ou des fonctions Scipy.
