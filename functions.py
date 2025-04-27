@@ -11,28 +11,41 @@ import scipy as sp
 from numba import njit
 
 @njit(nogil=True)
-def metropolis_kernel(lattice, h, betaJ, n_iter):
+def metropolis_kernel(lattice, h, betaJ, n_iter, save_all=False):
+    """Version optimisée de l'algorithme Metropolis. 
+       Celui-ci utilise la fonction njit de numba pour compiler le code en C et l'accélérer. Cependant, celle-ci ne permet pas d'utiliser un seed aléatoire ou des fonctions Scipy.
+    Arguments:
+        lattice : matrice 2D de spins (1 ou -1)
+        h : champ magnétique
+        betaJ : beta * J
+        n_iter : nombre d'itérations de l'algorithme
+        save_all : si True, sauvegarde tous les états intermédiaires du réseau"""
+    
     size = lattice.shape[0]
     energy = -h * lattice.sum()
+    # On commence par calculer l'énergie de la grille. On doit utiliser des boucles fort puisque Numba ne supporte pas les fonctions de convolution de Scipy
     for row in range(size):
         for col in range(size):
             energy += -lattice[row, col] * (
                 lattice[(row+1)%size, col] +
                 lattice[row, (col+1)%size]
             )
-
+    # On initialise les listes de sauvegarde
     spin_mean_list = [np.mean(lattice)] 
     energy_list = [energy]                
     list_lattices = [lattice.copy()]       
 
     for iter in range(n_iter):
+        # Permet d'afficher le progrès de l'algorithme tous les 1000 itérations
         if iter % 1000 == 0:
             print("h : ", h, "Iteration:", iter, "Energy:", energy)
 
+        # On choisit un spin aléatoire à retourner
         row = np.random.randint(0, size)
         col = np.random.randint(0, size)
-        s = lattice[row, col]
+        s = lattice[row, col] # Le spin qu'on va potentiellement changer de signe
 
+        # Calcul de la somme des voisins pour le spin choisi (terme de corrélations)
         neighbors_sum = (
             lattice[(row+1)%size, col]
             + lattice[(row-1)%size, col]
@@ -40,8 +53,9 @@ def metropolis_kernel(lattice, h, betaJ, n_iter):
             + lattice[row, (col-1)%size]
         )
 
-        DeltaE = 2 * s * (h + neighbors_sum)
+        DeltaE = 2 * s * (h + neighbors_sum) # Raccourci pour calculer l'énergie du spin concerné. Puisqu'un seul spin change de spin, cela revient à multiplier par 2 l'énergie du spin concerné (voir le rapport).
 
+        # On applique la condition de Metropolis. Si l'énergie est plus faible, on flip le spin. Sinon, on flip avec une probabilité donnée par la distribution de Boltzmann.
         if DeltaE <= 0 or np.random.random() < np.exp(-betaJ * DeltaE):
             lattice[row, col] *= -1
             energy += DeltaE
@@ -49,7 +63,10 @@ def metropolis_kernel(lattice, h, betaJ, n_iter):
         spin_mean_list.append(np.mean(lattice))
         energy_list.append(energy)
 
-        if iter % 2000 == 0:
+        # On sauvegarde l'état du réseau tous les 2000 itérations si save_all est False. Sinon, on sauvegarde à chaque itération
+        if iter % 2000 == 0 and not save_all:
+            list_lattices.append(lattice.copy())
+        else:
             list_lattices.append(lattice.copy())
 
     return lattice, energy, spin_mean_list, energy_list, list_lattices
