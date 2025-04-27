@@ -85,10 +85,10 @@ class Metropolis():
             n_iter (int): Nombre d'itérations maximal pour la simulation.
             run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite. Sinon, la simulation s'arrête après n_iter_max itérations. Ceci s'applique seulement si fast=False. Dans le cas où fast=True, la simulation s'arrête toujours après n_iter_max itérations.
             fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True.
-            fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_kernel assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
+            fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_fast assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
             save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
         
-        Méthode rapide: Permet d'accélérer le calcul en utilisant la compilation JIT de Numba pour optimiser les boucles et les calculs sur les tableaux NumPy. Cependant, cette méthode ne permet pas d'utiliser la convolution de Scipy pour le calcul de l'énergie de même q'une seed pour les nombres aléatoires.
+        Méthode rapide: Permet d'accélérer le calcul en utilisant la compilation JIT de Numba pour optimiser les boucles et les calculs sur les tableaux NumPy. Cependant, cette méthode ne permet pas d'utiliser la convolution de Scipy pour le calcul de l'énergie de même qu'une seed pour les nombres aléatoires.
 
         Méthode classique: Utilise la méthode de Metropolis sans Numba, ce qui peut être plus lent mais permet d'utiliser la convolution de Scipy pour le calcul de l'énergie et d'utiliser une seed en particulier pour générer les nombres aléatoires.
 
@@ -108,7 +108,7 @@ class Metropolis():
         list_lattices = [lattice.copy()]
         energy_list = [energy]
         rng = self.rng
-        energy_fluctuation = 1e6 # Initialisation de la fluctuation d'énergie pour les premiers pas de temps avant qu'on atteigne un nombre d'itérations suffisant pour calculer la fluctuation d'énergie.
+        energy_fluctuation = 1e6 # Initialisation de la fluctuation d'énergie pour les premiers pas de temps avant qu'on atteigne un nombre d'itérations suffisant pour la calculer à l'aide du buffer.
 
         if fast:
             lattice, energy, spin_mean_list, energy_list, list_lattices = metropolis_fast(lattice, h, betaJ, n_iter, save_all)
@@ -253,7 +253,7 @@ class Metropolis():
             h_high (float): Valeur maximale du champ magnétique qu'on veut balayer.
             resolution (float): Résolution du balayage du champ magnétique. Plus la valeur est petite, plus le balayage est fin.
             n_iter (int): Nombre d'itérations maximal pour la simulation.
-            fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_kernel assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
+            fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_fast assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
             save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
             buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie dans le cas où fast=False et run_max=False.
             run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite dans le cas où fast=False et run_max=false.
