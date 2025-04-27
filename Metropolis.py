@@ -63,6 +63,7 @@ class Metropolis():
             1) les voisins immédiats;
             2) le champ magnétique externe.
         """
+
         energie_mag = 0
         energy_array = 0
 
@@ -179,6 +180,13 @@ class Metropolis():
 
 
     def summary(self):
+        """
+        Renvoie un résumé des paramètres de la simulation.
+        
+        Renvoie:
+            dict: Dictionnaire contenant les paramètres de la simulation.
+        """
+        
         return {
             "seed": self.seed,
             "lattice_shape": self.lattice.shape,
@@ -198,6 +206,7 @@ class Metropolis():
             lattice (np.ndarray, optional): Grille de spins à tracer. Si None, utilise la grille actuelle de l'objet Metropolis.
             title (str): Titre du graphique.
         """
+
         if lattice is None:
             lattice = self.lattice
         plt.imshow(lattice, cmap='coolwarm', vmin=-1, vmax=1)
@@ -215,6 +224,7 @@ class Metropolis():
         Paramètres:
             title (str): Titre du graphique.
         """
+
         plt.plot(self.energy_list)
         plt.xlabel("Itération")
         plt.ylabel("E/J")
@@ -228,8 +238,8 @@ class Metropolis():
 
         Paramètres:
             title (str): Titre du graphique.
-
         """
+
         plt.plot(self.spin_mean_list)
         plt.xlabel("Itération")
         plt.ylabel(r"$\langle M \rangle $")
@@ -238,6 +248,21 @@ class Metropolis():
 
 
     def plot_hysteresis(self, h_low=-1, h_high=1, resolution=0.05, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002):
+        """
+        Trace la courbe d'hystérèse en faisant varier le champ magnétique.
+        
+        Paramètres:
+            h_low (float): Valeur minimale du champ magnétique qu'on veut balayer.
+            h_high (float): Valeur maximale du champ magnétique qu'on veut balayer.
+            resolution (float): Résolution du balayage du champ magnétique. Plus la valeur est petite, plus le balayage est fin.
+            fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_kernel assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
+            save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
+            buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie dans le cas où fast=False et run_max=False.
+            run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite dans le cas où fast=False et run_max=false.
+            fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True dans le cas où fast=False. 
+        """
+
+
         h_list = np.concatenate((np.arange(h_low, h_high, resolution), np.arange(h_high, h_low, -resolution)))
         spin_step_list = []
         for i in range(len(h_list)):
@@ -249,9 +274,10 @@ class Metropolis():
         plt.xlabel("Champ magnétique normalisé (h/J)")
         plt.ylabel(r"$\langle M \rangle $")
         plt.title("Courbe d'hystérèse")
+        plt.ylim(-1, 1)
         plt.show()
 
 
-metro = Metropolis(lattice_size=64, betaJ=0.5, magnetic_field=0.0, pourcentage_up=-1.0, n_iter_max=30000)
+metro = Metropolis(lattice_size=64, betaJ=0.05, magnetic_field=0.0, pourcentage_up=-1.0, n_iter_max=30000)
 
 metro.plot_hysteresis(h_low=-1, h_high=1, resolution=0.05, fast=True)
