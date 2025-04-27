@@ -95,7 +95,7 @@ class Metropolis():
         fluct_eq = self.fluct_eq
         run_max = self.run_max
         buffer = self.buffer
-        energy_fluctuation = 1e6  # Start with large fluctuation
+        energy_fluctuation = 1e6
 
         if fast:
             lattice, energy, spin_mean_list, energy_list, list_lattices = metropolis_kernel(lattice, h, betaJ, n_iter)
