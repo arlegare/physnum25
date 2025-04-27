@@ -12,13 +12,14 @@ class Metropolis():
         Initialise les paramètres de la simulation de Metropolis.
 
         Entrée :
-            n_iter (int): Nombre d'itérations pour la simulation.
             lattice_size (int): Taille de la grille de spins.
             magnetic_field (float): Champ magnétique externe normalisée avec J (h = H/J).
             betaJ (float): Ratio de la constante de couplage J sur k_BT (positif pour ferromagnétisme, négatif pour antiferromagnétisme).
             previous_lattice (np.ndarray, optional): Grille de spins initiale. Si None, une grille sera générée.
             pourcentage_up (float): Pourcentage de spins orienté up dans la grille initiale (entre 0 et 1).
             seed (int, optional): Seed pour le générateur de nombres aléatoires. Si None, une seed aléatoire sera utilisée. L'argument peut seulement être utilisé si fast=False dans la fonction find_equilibrium.
+            seed_offset (int): Décalage du seed pour le générateur congruentiel linéaire. On le fait repartir à zéro à chaque nouvelle instance de Metropolis.
+            verbose (bool): Si True, affiche des informations sur l'état de la simulation lors de l'exécution de la fonction find_equilibrium.
         """
     
         self.size = lattice_size  
@@ -26,7 +27,7 @@ class Metropolis():
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  
         self.seed = seed
-        self.seed_offset = 0 # Pour décaler le seed du générateur congruentiel linéaire. On le fait repartir à zéro à chaque nouvelle instance de Metropolis.
+        self.seed_offset = 0
         self.rng = np.random.default_rng(self.seed)  # Générateur de seed pseudo-aléatoire indépendant. 
         self.energy_list = []  # Liste pour stocker les énergies à chaque itération.
         self.spin_mean_list = []  # Liste pour stocker la moyenne des spins à chaque itération.
@@ -85,7 +86,7 @@ class Metropolis():
         Paramètres:
             buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie. Il s'agit de la fenêtre de points sur laquelle on calcule la fluctuation d'énergie. S'applique seulement si fast=False et run_max=False.
             n_iter (int): Nombre d'itérations maximal pour la simulation.
-            run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite. Sinon, la simulation s'arrête après n_iter_max itérations. Ceci s'applique seulement si fast=False. Dans le cas où fast=True, la simulation s'arrête toujours après n_iter_max itérations.
+            run_max (bool): Si True, la simulation s'arrête lorsqu'on atteint le nombre d'itération maximal. Dans le cas où fast=False et run_max=false, elle s'arrêtera la fluctuation d'énergie est suffisamment petite.
             fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True.
             fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_fast assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
             save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
@@ -261,7 +262,7 @@ class Metropolis():
             fast (bool): Si True, utilise la méthode rapide de Metropolis à l'aide de la fonction metropolis_fast assistée de Numba. Sinon, on utilise la méthode classique sans Numba.
             save_all (bool): Si True, sauvegarde la grille de spins à chaque itération. Sinon, sauvegarde la grille de spins tous les 2000 itérations.
             buffer (int): Taille du buffer pour le calcul de la fluctuation d'énergie dans le cas où fast=False et run_max=False.
-            run_max (bool): Si True, la simulation s'arrête lorsque la fluctuation d'énergie est suffisamment petite dans le cas où fast=False et run_max=false.
+            run_max (bool): Si True, la simulation s'arrête lorsqu'on atteint le nombre d'itération maximal. Dans le cas où fast=False et run_max=false, elle s'arrêtera la fluctuation d'énergie est suffisamment petite.
             fluct_eq (float): Fluctuation d'énergie à atteindre pour considérer que le système est en équilibre. Utilisé seulement si run_max=True dans le cas où fast=False. 
         """
 
@@ -269,9 +270,9 @@ class Metropolis():
         spin_step_list = []
         for i in tqdm(range(len(h_list)), desc="Variation du champ magnétique"):
             self.h = h_list[i]  # On change le champ magnétique pour la prochaine itération
-            lattices, _, spin_means, _ = metro.find_equilibrium(n_iter, fast, save_all, run_max, fluct_eq, buffer)
+            lattices, _, spin_means, _ = self.find_equilibrium(n_iter, fast, save_all, run_max, fluct_eq, buffer)
             spin_step_list.append(spin_means[-1])
-            metro.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
+            self.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
         plt.figure(figsize=(10,6))
         plt.plot(h_list, spin_step_list, color="darkBlue", linewidth=2.5, label=r"$\beta J = $" + f"{self.beta:.2f}")
         plt.scatter(h_list, spin_step_list, color="black")
