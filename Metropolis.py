@@ -4,9 +4,10 @@ import scipy.ndimage as sc
 import time
 from numba import njit
 from functions import metropolis_fast
+from tqdm import tqdm
 
 class Metropolis():
-    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, seed=None):
+    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, seed=None, seed_offset=0, verbose=False):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -25,11 +26,12 @@ class Metropolis():
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  
         self.seed = seed
+        self.seed_offset = 0 # Pour décaler le seed du générateur congruentiel linéaire. On le fait repartir à zéro à chaque nouvelle instance de Metropolis.
         self.rng = np.random.default_rng(self.seed)  # Générateur de seed pseudo-aléatoire indépendant. 
         self.energy_list = []  # Liste pour stocker les énergies à chaque itération.
         self.spin_mean_list = []  # Liste pour stocker la moyenne des spins à chaque itération.
         self.list_lattices = []  # Liste pour stocker les grilles de spins à chaque itération.
-
+        self.verbose = verbose
 
         if previous_lattice is not None:
             self.lattice = previous_lattice
@@ -108,11 +110,13 @@ class Metropolis():
         list_lattices = [lattice.copy()]
         energy_list = [energy]
         rng = self.rng
-        energy_fluctuation = 1e6 # Initialisation de la fluctuation d'énergie pour les premiers pas de temps avant qu'on atteigne un nombre d'itérations suffisant pour la calculer à l'aide du buffer.
+        energy_fluctuation = 1e6 # Initialisation de la fluctuation d'énergie pour les premiers pas de temps avant qu'on atteigne un nombre d'itérations suffisant pour calculer la fluctuation d'énergie.
+        seed_offsetting = 0
 
         if fast:
-            lattice, energy, spin_mean_list, energy_list, list_lattices = metropolis_fast(lattice, h, betaJ, n_iter, save_all)
+            lattice, energy, spin_mean_list, energy_list, list_lattices, seed_offsetting = metropolis_fast(lattice, h, betaJ, n_iter, self.seed, self.seed_offset, save_all, verbose=self.verbose)
             # Actualisation des attributs de la classe avec les résultats de la simulation
+            self.seed_offset += seed_offsetting # On avance dans la séquence du générateur. 
             self.lattice = lattice
             self.energy = energy
             self.spin_mean_list = spin_mean_list
@@ -122,7 +126,7 @@ class Metropolis():
         else:
             for iter in range(n_iter):
                 new_lattice = lattice.copy()
-                if iter % 1000 == 0:
+                if iter % 1000 == 0 and self.verbose:
                     print(f"h = {h:.2f}, iter = {iter}, E = {energy:.2f}, ΔE_fluct = {energy_fluctuation:.2e}") # État de la simulation tous les 1000 itérations
 
                 # On flip un spin aléatoire
@@ -206,6 +210,7 @@ class Metropolis():
 
         if lattice is None:
             lattice = self.lattice
+        plt.figure(figsize=(10,6))
         plt.imshow(lattice, cmap='coolwarm', vmin=-1, vmax=1)
         plt.title(title)
         plt.colorbar(label="Valeur du spin")
@@ -221,7 +226,7 @@ class Metropolis():
         Paramètres:
             title (str): Titre du graphique.
         """
-
+        plt.figure(figsize=(10,6))
         plt.plot(self.energy_list)
         plt.xlabel("Itération")
         plt.ylabel("E/J")
@@ -236,7 +241,7 @@ class Metropolis():
         Paramètres:
             title (str): Titre du graphique.
         """
-
+        plt.figure(figsize=(10,6))
         plt.plot(self.spin_mean_list)
         plt.xlabel("Itération")
         plt.ylabel(r"$\langle M \rangle $")
@@ -262,19 +267,22 @@ class Metropolis():
 
         h_list = np.concatenate((np.arange(h_low, h_high, resolution), np.arange(h_high, h_low, -resolution)))
         spin_step_list = []
-        for i in range(len(h_list)):
+        for i in tqdm(range(len(h_list)), desc="Variation du champ magnétique"):
             self.h = h_list[i]  # On change le champ magnétique pour la prochaine itération
             lattices, _, spin_means, _ = metro.find_equilibrium(n_iter, fast, save_all, run_max, fluct_eq, buffer)
             spin_step_list.append(spin_means[-1])
             metro.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
-        plt.plot(h_list, spin_step_list)
-        plt.xlabel("Champ magnétique normalisé (h/J)")
-        plt.ylabel(r"$\langle M \rangle $")
+        plt.figure(figsize=(10,6))
+        plt.plot(h_list, spin_step_list, color="darkBlue", linewidth=2.5, label=r"$\beta J = $" + f"{self.beta:.2f}")
+        plt.scatter(h_list, spin_step_list, color="black")
+        plt.xlabel(r"Champ magnétique normalisé $h/J$")
+        plt.ylabel(r"Magnétisation moyenne $\langle M \rangle $")
         plt.title("Courbe d'hystérèse")
         plt.ylim(-1, 1)
         plt.show()
 
+        return h_list, spin_step_list
 
-metro = Metropolis(lattice_size=64, betaJ=0.05, magnetic_field=0.0, pourcentage_up=-1.0)
 
-metro.plot_hysteresis(h_low=-1, h_high=1, resolution=0.05, fast=True)
+#metro = Metropolis(lattice_size=64, betaJ=0.7, magnetic_field=0.0, pourcentage_up=0, verbose=False)
+#metro.plot_hysteresis(h_low=-2, h_high=2, resolution=0.1, fast=True)

@@ -11,7 +11,38 @@ import scipy as sp
 from numba import njit
 
 @njit(nogil=True)
-def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
+def pseudo_random_generator(seed, size, offset=0):
+    """
+    Un générateur de nombres pseudo-aléatoires simple utilisant la méthode du générateur congruentiel linéaire (LCG).
+    Cela peut être accéléré avec @njit(nogil=True).
+
+    Entrée :
+        seed : int, la valeur initiale de la seed.
+        size : int, le nombre de nombres aléatoires à générer.
+        offset : int, le nombre de valeurs échantillonnées auparavant pour se situer sur la séquence pseudo-aléatoire.
+
+    Retourne :
+        Un tableau numpy 1D de nombres pseudo-aléatoires dans l'intervalle [0, 1).
+    """
+    a = 1664525  # Multiplicateur
+    c = 1013904223  # Incrément
+    m = 2**32  # Module
+    random_numbers = np.empty(size, dtype=np.float64)
+    state = seed
+
+    # Avancer l'état pour atteindre l'offset
+    for _ in range(offset):
+        state = (a * state + c) % m
+
+    # Générer les nombres pseudo-aléatoires
+    for i in range(size):
+        state = (a * state + c) % m
+        random_numbers[i] = state / m
+
+    return random_numbers
+
+@njit(nogil=True)
+def metropolis_fast(lattice, h, betaJ, n_iter, seed=None, seed_offset=0, save_all=False, verbose=False):
     """
     Version optimisée de l'algorithme Metropolis. 
        Celui-ci utilise la fonction njit de numba pour compiler le code en C et l'accélérer. Cependant, celle-ci ne permet pas d'utiliser un seed aléatoire ou des fonctions Scipy.
@@ -21,7 +52,10 @@ def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
         h : champ magnétique
         betaJ : beta * J
         n_iter : nombre d'itérations de l'algorithme
-        save_all : si True, sauvegarde tous les états intermédiaires du réseau
+        seed : int, graine pour le générateur pseudo-aléatoire (optionnel)
+        seed_offset : int, nombre de pas à avancer dans la séquence pseudo-aléatoire (optionnel)
+        save_all : bool, si True, sauvegarde tous les états intermédiaires du réseau
+        verbose : bool, si True, affiche les informations de progression
     """
     
     size = lattice.shape[0]
@@ -38,14 +72,27 @@ def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
     energy_list = [energy]                
     list_lattices = [lattice.copy()]       
 
+
+    # On produit d'avance la séquence de nombre pseudo-aléatoires.
+    random_numbers = pseudo_random_generator(seed, int(3*n_iter), seed_offset)
+
     for iter in range(n_iter):
         # Permet d'afficher le progrès de l'algorithme tous les 1000 itérations
-        if iter % 1000 == 0:
-            print("h : ", h, "Iteration:", iter, "Energy:", energy)
+        if iter % 1000 == 0 and verbose:
+            print("h : ", h, "Itération:", iter, "Énergie:", energy)
+
+        use_precomputed_random = seed is not None
 
         # On choisit un spin aléatoire à retourner
-        row = np.random.randint(0, size)
-        col = np.random.randint(0, size)
+        if use_precomputed_random:
+            row = int(random_numbers[3*iter] * size)
+            col = int(random_numbers[3*iter+1] * size)
+            r = random_numbers[3*iter+2]
+        else:
+            row = np.random.randint(0, size)
+            col = np.random.randint(0, size)
+            r = np.random.rand()
+
         s = lattice[row, col] # Le spin qu'on va potentiellement changer de signe
 
         # Calcul de la somme des voisins pour le spin choisi (terme de corrélations)
@@ -59,7 +106,8 @@ def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
         DeltaE = 2 * s * (h + neighbors_sum) # Raccourci pour calculer l'énergie du spin concerné. Puisqu'un seul spin change de spin, cela revient à multiplier par 2 l'énergie du spin concerné (voir le rapport).
 
         # On applique la condition de Metropolis. Si l'énergie est plus faible, on flip le spin. Sinon, on flip avec une probabilité donnée par la distribution de Boltzmann.
-        if DeltaE <= 0 or np.random.random() < np.exp(-betaJ * DeltaE):
+        r = random_numbers[3*iter+2] if seed is not None else np.random.rand()
+        if DeltaE <= 0 or r < np.exp(-betaJ * DeltaE):
             lattice[row, col] *= -1
             energy += DeltaE
 
@@ -67,12 +115,13 @@ def metropolis_fast(lattice, h, betaJ, n_iter, save_all=False):
         energy_list.append(energy)
 
         # On sauvegarde l'état du réseau tous les 2000 itérations si save_all est False. Sinon, on sauvegarde à chaque itération
-        if iter % 2000 == 0 and not save_all:
+        #if iter % 2000 == 0 and not save_all:
+        if save_all or iter % 2000 == 0:
             list_lattices.append(lattice.copy())
         else:
             list_lattices.append(lattice.copy())
 
-    return lattice, energy, spin_mean_list, energy_list, list_lattices
+    return lattice, energy, spin_mean_list, energy_list, list_lattices, int(3*n_iter)
 
 
 def standardize(matrice):  # standardisation des entrées de la matrice
