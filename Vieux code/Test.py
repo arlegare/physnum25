@@ -60,23 +60,54 @@ def find_equilibrium(betaJ, h,  lattice, n_iter, energy):
         list_lattices.append(lattice)
     return list_lattices, energy, spin_mean_list, energy_list
 
-start_time = time.time()
-initial_lattice = initialize_lattice(64, pourcentage_up=-1.0)
-energy = microstate_energy(initial_lattice, 0)
+def fonc1(m):
+    return m
+
+def fonc2(m, betaJ, h):
+    return np.tanh(betaJ*m*4 + betaJ*h)
+
+m = np.linspace(-1, 1, 1000)
+
+betaJ_values = [0.1, 0.5, 1.5]  
+h_values = [0, 1, -1]
+
+for h in h_values:
+    plt.figure(figsize=(8, 6))
+    
+
+    plt.plot(m, fonc1(m), color='black', linestyle='--', label=r"$m$")
 
 
-h_list = np.concatenate((np.arange(-1, 1, 0.05), np.arange(1, -1, -0.05)))
-spin_mean_list = []
-for i in range(len(h_list)):
-    lattices, energy, spin_means, energy_list = find_equilibrium(0.5, h_list[i], initial_lattice, 30000, energy)
-    spin_mean_list.append(spin_means[-1])
-    initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
+    for betaJ in betaJ_values:
+        label = rf"$h = {h}$, $\beta J = {betaJ}$"
+        plt.plot(m, fonc2(m, betaJ, h), label=label)
 
-plt.figure(0)
-plt.plot(h_list, spin_mean_list)
-plt.xlabel("h/J")
-plt.ylabel("Spin Mean")
-plt.show()
+
+    plt.xlabel(r"$m$")
+    plt.ylabel(r"$m$")
+    plt.legend()
+    plt.show()
+
+
+
+#start_time = time.time()
+#initial_lattice = initialize_lattice(64, pourcentage_up=-1.0)
+#energy = microstate_energy(initial_lattice, 0)
+
+
+
+#h_list = np.concatenate((np.arange(-1, 1, 0.05), np.arange(1, -1, -0.05)))
+#spin_mean_list = []
+#for i in range(len(h_list)):
+#    lattices, energy, spin_means, energy_list = find_equilibrium(0.5, h_list[i], initial_lattice, 30000, energy)
+#    spin_mean_list.append(spin_means[-1])
+#    initial_lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
+
+#plt.figure(0)
+#plt.plot(h_list, spin_mean_list)
+#plt.xlabel("h/J")
+#plt.ylabel("Spin Mean")
+#plt.show()
 
 
 """
