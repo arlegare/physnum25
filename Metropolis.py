@@ -27,7 +27,7 @@ class Metropolis():
         self.betaJ = betaJ
         self.up_perc = pourcentage_up  
         self.seed = seed
-        self.seed_offset = 0
+        self.seed_offset = seed_offset
         self.rng = np.random.default_rng(self.seed)  # Générateur de seed pseudo-aléatoire indépendant. 
         self.energy_list = []  # Liste pour stocker les énergies à chaque itération.
         self.spin_mean_list = []  # Liste pour stocker la moyenne des spins à chaque itération.
