@@ -1,8 +1,8 @@
-
-# TODO
-* Automatiser les simulations multiples pour une boucle complète d'hystérésis
-* BONUS : Système de plusieurs modèles d'Ising interagissant ensemble
-
+# Structure du projet
+1) `Metropolis.py` consiste en le coeur du simulateur d'Ising en 2D avec l'algorithme Metropolis-Hastings. Correspond à une classe.
+2) `functions.py` Recèle plein de fonctions utiles au développement du code. La version rapide de l'algorithme, accélérée par Numba, s'y trouve également.
+3) `analyse_v2.ipynb` est le notebook servant à lancer des simulations ainsi qu'à analyser les résultats. Les figures du rapport ont aussi été produites grâce à ce notebook.
+4) Le dossier `Vieux code` contient des traces de code développé au courant du projet, mais qui a été supplanté par de nouvelles versions.
 
 # Exploration numérique du modèle d'Ising
 
