@@ -274,7 +274,7 @@ class Metropolis():
             spin_step_list.append(spin_means[-1])
             self.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
         plt.figure(figsize=(10,6))
-        plt.plot(h_list, spin_step_list, color="darkBlue", linewidth=2.5, label=r"$\beta J = $" + f"{self.beta:.2f}")
+        plt.plot(h_list, spin_step_list, color="darkBlue", linewidth=2.5, label=r"$\beta J = $" + f"{self.betaJ:.2f}")
         plt.scatter(h_list, spin_step_list, color="black")
         plt.xlabel(r"Champ magnétique normalisé $h/J$")
         plt.ylabel(r"Magnétisation moyenne $\langle M \rangle $")
@@ -285,16 +285,5 @@ class Metropolis():
         return h_list, spin_step_list
 
 
-metro = Metropolis(lattice_size=64, betaJ=0.7, magnetic_field=0.0, pourcentage_up=0.55, verbose=True)
-list_lattices, energy, spin_mean_list, energy_list = metro.find_equilibrium(n_iter=1000000, fast=True, run_max=False, save_all=False)
-
-plt.figure(figsize=(10,6))
-plt.plot(list_lattices[0], label="Grille de spins")
-plt.title("Grille de spins à l'itération 0")
-plt.colorbar(label="Valeur du spin")
-plt.plot(list_lattices[-1], label="Grille de spins")
-plt.title("Grille de spins à l'itération 1000000")
-plt.colorbar(label="Valeur du spin")
-plt.show()
-
-#metro.plot_hysteresis(h_low=-2, h_high=2, resolution=0.1, fast=True)
+metro = Metropolis(lattice_size=64, betaJ=0.2, magnetic_field=-1.0, pourcentage_up=-1.0, verbose=True)
+metro.plot_hysteresis(h_low=-1, h_high=1, resolution=0.05, n_iter=30000, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002)
