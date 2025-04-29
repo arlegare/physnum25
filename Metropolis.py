@@ -115,7 +115,7 @@ class Metropolis():
         seed_offsetting = 0
 
         if fast:
-            lattice, energy, spin_mean_list, energy_list, list_lattices, seed_offsetting = metropolis_fast(lattice, h, betaJ, n_iter, self.seed, self.seed_offset, save_all, verbose=self.verbose)
+            lattice, energy, spin_mean_list, energy_list, list_lattices, seed_offsetting = metropolis_fast(lattice, h, betaJ, n_iter, energy, self.seed, self.seed_offset, save_all, verbose=self.verbose)
             # Actualisation des attributs de la classe avec les résultats de la simulation
             self.seed_offset += seed_offsetting # On avance dans la séquence du générateur. 
             self.lattice = lattice
@@ -209,7 +209,7 @@ class Metropolis():
         if lattice is None:
             lattice = self.lattice
         plt.figure(figsize=(10,6))
-        plt.imshow(lattice, cmap='coolwarm', vmin=-1, vmax=1)
+        plt.imshow(lattice, vmin=-1, vmax=1)
         plt.title(title)
         plt.colorbar(label="Valeur du spin")
         plt.xticks([])
@@ -282,3 +282,11 @@ class Metropolis():
         plt.show()
 
         return h_list, spin_step_list
+
+# Exemple d'utilisation de la classe Metropolis
+metro = Metropolis(64, 0.7, 0, pourcentage_up=0.65, verbose=True)
+lattice, energy, spin_mean_list, energy_list = metro.find_equilibrium(50000, fast=True, run_max=False, save_all=True)
+
+metro.plot_lattice(lattice[0], title="Grille de spins initiale")
+metro.plot_lattice(lattice[-1], title="Grille de spins après 100000 itérations")
+plt.show()

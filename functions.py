@@ -42,7 +42,7 @@ def pseudo_random_generator(seed, size, offset=0):
     return random_numbers
 
 @njit(nogil=True)
-def metropolis_fast(lattice, h, betaJ, n_iter, seed=None, seed_offset=0, save_all=False, verbose=False):
+def metropolis_fast(lattice, h, betaJ, n_iter, energy, seed=None, seed_offset=0, save_all=False, verbose=False):
     """
     Version optimisée de l'algorithme Metropolis. 
        Celui-ci utilise la fonction njit de numba pour compiler le code en C et l'accélérer. Cependant, celle-ci ne permet pas d'utiliser un seed aléatoire ou des fonctions Scipy.
@@ -57,16 +57,7 @@ def metropolis_fast(lattice, h, betaJ, n_iter, seed=None, seed_offset=0, save_al
         save_all : bool, si True, sauvegarde tous les états intermédiaires du réseau
         verbose : bool, si True, affiche les informations de progression
     """
-    
-    size = lattice.shape[0]
-    energy = -h * lattice.sum()
-    # On commence par calculer l'énergie de la grille. On doit utiliser des boucles fort puisque Numba ne supporte pas les fonctions de convolution de Scipy
-    for row in range(size):
-        for col in range(size):
-            energy += -lattice[row, col] * (
-                lattice[(row+1)%size, col] +
-                lattice[row, (col+1)%size]
-            )
+    size = lattice.shape[0] 
     # On initialise les listes de sauvegarde
     spin_mean_list = [np.mean(lattice)] 
     energy_list = [energy]                
