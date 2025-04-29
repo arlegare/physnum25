@@ -252,7 +252,9 @@ class Metropolis():
 
     def plot_hysteresis(self, h_low=-1, h_high=1, resolution=0.05, n_iter=30000, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002):
         """
-        Trace la courbe d'hystérèse en faisant varier le champ magnétique.
+        Trace la courbe d'hystérèse en faisant varier le champ magnétique. 
+        Notez qu'il faut générer une instance de la classe Métropolis avec un pourcentage de spins initial qui est dans la même direction que h_low pour que la simulation fonctionne correctement.
+        La simulation est faite en deux passes : une pour h_low à h_high et une autre pour h_high à h_low. 
         
         Paramètres:
             h_low (float): Valeur minimale du champ magnétique qu'on veut balayer.
@@ -268,11 +270,11 @@ class Metropolis():
 
         h_list = np.concatenate((np.arange(h_low, h_high, resolution), np.arange(h_high, h_low, -resolution)))
         spin_step_list = []
-        for i in tqdm(range(len(h_list)), desc="Variation du champ magnétique"):
+        for i in tqdm(range(len(h_list)), desc="Variation du champ magnétique"): # Balayage du champ magnétique
             self.h = h_list[i]  # On change le champ magnétique pour la prochaine itération
             lattices, _, spin_means, _ = self.find_equilibrium(n_iter, fast, save_all, run_max, fluct_eq, buffer)
             spin_step_list.append(spin_means[-1])
-            self.lattice = lattices[-1]  # On change le champ magnétique pour la prochaine itération
+            self.lattice = lattices[-1]  # On garde le dernier état comme état initial pour la prochaine itération
         plt.figure(figsize=(10,6))
         plt.plot(h_list, spin_step_list, color="darkBlue", linewidth=2.5, label=r"$\beta J = $" + f"{self.betaJ:.2f}")
         plt.scatter(h_list, spin_step_list, color="black")
