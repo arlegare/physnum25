@@ -68,7 +68,7 @@ def fonc2(m, betaJ, h):
 
 m = np.linspace(-1, 1, 1000)
 
-betaJ_values = [0.1, 0.5, 1.5]  
+betaJ_values = [0.1, 0.3, 1.5]  
 h_values = [0, 1, -1]
 
 for h in h_values:

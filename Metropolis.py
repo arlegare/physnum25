@@ -7,7 +7,7 @@ from functions import metropolis_fast
 from tqdm import tqdm
 
 class Metropolis():
-    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, seed=None, seed_offset=0, verbose=False):
+    def __init__(self, lattice_size, betaJ, magnetic_field, energy=None, previous_lattice=None, pourcentage_up=0.60, seed=0, seed_offset=0, verbose=False):
         """
         Initialise les paramètres de la simulation de Metropolis.
 
@@ -285,5 +285,16 @@ class Metropolis():
         return h_list, spin_step_list
 
 
-#metro = Metropolis(lattice_size=64, betaJ=0.7, magnetic_field=0.0, pourcentage_up=0, verbose=False)
+metro = Metropolis(lattice_size=64, betaJ=0.7, magnetic_field=0.0, pourcentage_up=0.55, verbose=True)
+list_lattices, energy, spin_mean_list, energy_list = metro.find_equilibrium(n_iter=1000000, fast=True, run_max=False, save_all=False)
+
+plt.figure(figsize=(10,6))
+plt.plot(list_lattices[0], label="Grille de spins")
+plt.title("Grille de spins à l'itération 0")
+plt.colorbar(label="Valeur du spin")
+plt.plot(list_lattices[-1], label="Grille de spins")
+plt.title("Grille de spins à l'itération 1000000")
+plt.colorbar(label="Valeur du spin")
+plt.show()
+
 #metro.plot_hysteresis(h_low=-2, h_high=2, resolution=0.1, fast=True)
