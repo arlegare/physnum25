@@ -103,7 +103,7 @@ def metropolis_fast(lattice, h, betaJ, n_iter, seed=None, seed_offset=0, save_al
             + lattice[row, (col-1)%size]
         )
 
-        DeltaE = 2 * s * (h + neighbors_sum) # Raccourci pour calculer l'énergie du spin concerné. Puisqu'un seul spin change de spin, cela revient à multiplier par 2 l'énergie du spin concerné (voir le rapport).
+        DeltaE = 2 * s * (h + neighbors_sum) # Raccourci pour calculer l'énergie du spin concerné. Puisqu'un seul spin change de spin, cela revient à multiplier par 2 l'énergie du spin concerné.
 
         # On applique la condition de Metropolis. Si l'énergie est plus faible, on flip le spin. Sinon, on flip avec une probabilité donnée par la distribution de Boltzmann.
         r = random_numbers[3*iter+2] if seed is not None else np.random.rand()

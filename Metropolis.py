@@ -132,26 +132,23 @@ class Metropolis():
 
                 # On flip un spin aléatoire
                 row, col = rng.integers(0, size), rng.integers(0, size)
-                new_lattice[row, col] *= -1 
 
-                # On calcul l'énergie du spin concerné puisque les autres ne changent pas. Le modulo permet de prendre en compte les conditions frontières périodiques.
-                E_i = -h * lattice[row, col] - lattice[row, col] * (
-                    lattice[(row+1) % size, col] +
-                    lattice[(row-1) % size, col] +
-                    lattice[row, (col+1) % size] +
-                    lattice[row, (col-1) % size]
+                s = lattice[row, col] # Le spin qu'on va potentiellement changer de signe
+
+                # Calcul de la somme des voisins pour le spin choisi (terme de corrélations)
+                neighbors_sum = (
+                    lattice[(row+1)%size, col]
+                    + lattice[(row-1)%size, col]
+                    + lattice[row, (col+1)%size]
+                    + lattice[row, (col-1)%size]
                 )
 
-                E_f = -h * new_lattice[row, col] - new_lattice[row, col] * (
-                    new_lattice[(row+1) % size, col] +
-                    new_lattice[(row-1) % size, col] +
-                    new_lattice[row, (col+1) % size] +
-                    new_lattice[row, (col-1) % size]
-                )
+                DeltaE = 2 * s * (h + neighbors_sum) # Raccourci pour calculer l'énergie du spin concerné. Puisqu'un seul spin change de spin, cela revient à multiplier par 2 l'énergie du spin concerné.
+                r = rng.random() # On génère un nombre aléatoire entre 0 et 1
 
-                DeltaE = E_f - E_i
-                if DeltaE <= 0 or rng.random() < np.exp(-betaJ * DeltaE):
-                    lattice = new_lattice
+                # On flip le spin si l'énergie est plus petite ou si l'énergie est plus grande mais qu'on accepte le changement avec la probabilité de la distribution de Boltzmann
+                if DeltaE <= 0 or r < np.exp(-betaJ * DeltaE):
+                    lattice[row, col] *= -1
                     energy += DeltaE
 
                 spin_mean_list.append(np.mean(lattice))
@@ -285,7 +282,3 @@ class Metropolis():
         plt.show()
 
         return h_list, spin_step_list
-
-
-metro = Metropolis(lattice_size=64, betaJ=0.2, magnetic_field=-1.0, pourcentage_up=-1.0, verbose=True)
-metro.plot_hysteresis(h_low=-1, h_high=1, resolution=0.05, n_iter=30000, fast=True, save_all=False, buffer=5000, run_max=True, fluct_eq=0.002)
